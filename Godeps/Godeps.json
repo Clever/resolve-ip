@@ -1,0 +1,14 @@
+{
+	"ImportPath": "github.com/Clever/resolve-ip",
+	"GoVersion": "go1.6",
+	"Packages": [
+		"github.com/Clever/resolve-ip"
+	],
+	"Deps": [
+		{
+			"ImportPath": "gopkg.in/Clever/optimus.v3",
+			"Comment": "v3.6.4-10-gadba1ec",
+			"Rev": "adba1ec91df15f8b00c97a62e5ea6c348b3e0b7d"
+		}
+	]
+}
