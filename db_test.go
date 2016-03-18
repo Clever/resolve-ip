@@ -23,8 +23,10 @@ func TestDB(t *testing.T) {
 
 	latlon, err := db.Lookup("216.75.229.114")
 	assert.Nil(err)
+	assert.Equal(latlon, LatLon{37.555, -122.2687})
 
-	assert.Equal(latlon, &LatLon{37.555, -122.2687})
+	latlon, err = db.Lookup("0.0.0.0")
+	assert.Equal(err, ErrIPMissing)
 }
 
 func BenchmarkLookup(b *testing.B) {

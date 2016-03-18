@@ -20,17 +20,17 @@ type LatLon struct {
 	Lon float64 `json:"lon"`
 }
 
-func (ll *LatLon) String() string {
+func (ll LatLon) String() string {
 	return fmt.Sprintf("%f,%f", ll.Lat, ll.Lon)
 }
 
 // Boundary contains the start and end integers of an IP block and the LatLon that it corresponds to
 type Boundary struct {
 	Start, End int
-	*LatLon
+	LatLon
 }
 
-type byStart []*Boundary
+type byStart []Boundary
 
 func (a byStart) Len() int           { return len(a) }
 func (a byStart) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
@@ -38,19 +38,19 @@ func (a byStart) Less(i, j int) bool { return a[i].Start < a[j].Start }
 
 // GeoDB is a geo database that enables translating IP addresses to locations
 type GeoDB struct {
-	boundaries []*Boundary
+	boundaries []Boundary
 }
 
 // Lookup takes in an IPv4 IP address and returns a LatLon that that IP corresponds to.
-func (g *GeoDB) Lookup(ip string) (*LatLon, error) {
+func (g GeoDB) Lookup(ip string) (LatLon, error) {
 	pieces := strings.Split(ip, ".")
 	if len(pieces) != 4 {
-		return nil, fmt.Errorf("invalid IP %s", ip)
+		return LatLon{}, fmt.Errorf("invalid IP %s", ip)
 	}
 
 	num, err := piecesToInt(pieces)
 	if err != nil {
-		return nil, fmt.Errorf("invalid IP pieces %s", ip)
+		return LatLon{}, fmt.Errorf("invalid IP pieces %s", ip)
 	}
 
 	// sort.Search returns the smallest_ index for which the function returns true. Given that, we
@@ -63,7 +63,7 @@ func (g *GeoDB) Lookup(ip string) (*LatLon, error) {
 	// of the first boundary greater than our IP address. We can check for this case by making sure
 	// that the boundary start is smaller than our number.
 	if g.boundaries[idx].Start > num {
-		return nil, ErrIPMissing
+		return LatLon{}, ErrIPMissing
 	}
 
 	return g.boundaries[idx].LatLon, nil
@@ -72,7 +72,7 @@ func (g *GeoDB) Lookup(ip string) (*LatLon, error) {
 // NewGeoDB constructs a new GeoDB using the location and block data at the given path.
 func NewGeoDB(path string) (*GeoDB, error) {
 	db := &GeoDB{
-		boundaries: []*Boundary{},
+		boundaries: []Boundary{},
 	}
 
 	locations, err := os.Open(path + "/GeoLiteCity-Location.csv")
@@ -81,7 +81,7 @@ func NewGeoDB(path string) (*GeoDB, error) {
 	}
 	defer locations.Close()
 
-	locToLatLon := map[int]*LatLon{}
+	locToLatLon := map[int]LatLon{}
 
 	t := csv.New(locations)
 	for record := range t.Rows() {
@@ -98,7 +98,7 @@ func NewGeoDB(path string) (*GeoDB, error) {
 			return nil, err
 		}
 
-		locToLatLon[loc] = &LatLon{Lat: lat, Lon: lon}
+		locToLatLon[loc] = LatLon{Lat: lat, Lon: lon}
 	}
 	if t.Err() != nil {
 		return nil, t.Err()
@@ -125,7 +125,7 @@ func NewGeoDB(path string) (*GeoDB, error) {
 			return nil, fmt.Errorf("failed to find loc: %s", err)
 		}
 
-		boundary := &Boundary{Start: start, End: end, LatLon: locToLatLon[loc]}
+		boundary := Boundary{Start: start, End: end, LatLon: locToLatLon[loc]}
 		db.boundaries = append(db.boundaries, boundary)
 	}
 	if t.Err() != nil {
