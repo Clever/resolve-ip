@@ -1,0 +1,31 @@
+env:
+image: clever/drone-go:1.6
+notify:
+  email:
+    recipients:
+    - drone@clever.com
+  slack:
+    on_failure: true
+    on_started: false
+    on_success: false
+    webhook_url: $$slack_webhook
+publish:
+  catapult:
+    url: $$catapult_url
+    application: resolve-ip
+  docker:
+    docker_host: $$docker_server
+    email: $$docker_email
+    image_name: clever/resolve-ip
+    password: $$docker_password
+    registry_login: true
+    tags:
+    - $(git rev-parse --short HEAD)
+    username: $$docker_username
+    when:
+      branch: master
+script:
+- tar xvzf GeoLiteCity_20100401.tar.gz
+- mv GeoLiteCity_20100401 GeoLiteCity
+- make test
+- make build
