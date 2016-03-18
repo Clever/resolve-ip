@@ -1,0 +1,15 @@
+run:
+  type: docker
+env:
+resources:
+  cpu: 2
+expose:
+- name: http
+  port: 80
+  bind: 80
+  health_check:
+    type: http
+    path: /healthcheck
+elbs:
+  production:
+  - resolve-ip
