@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -9,6 +10,9 @@ import (
 
 	"gopkg.in/Clever/optimus.v3/sources/csv"
 )
+
+// ErrIPMissing is return when the input IP address doesn't exist in any of our IP blocks
+var ErrIPMissing = errors.New("IP address isn't in any of our IP blocks")
 
 // LatLon contains a latitude and a longitude
 type LatLon struct {
@@ -20,39 +24,21 @@ func (ll *LatLon) String() string {
 	return fmt.Sprintf("%f,%f", ll.Lat, ll.Lon)
 }
 
-// GeoDB is a geo database that enables translating IP addresses to locations
-type GeoDB struct {
-	blockBoundaries    []int
-	boundaryToLocation map[int]*LatLon
+// Boundary contains the start and end integers of an IP block and the LatLon that it corresponds to
+type Boundary struct {
+	Start, End int
+	*LatLon
 }
 
-func piecesToInt(pieces []string) (int, error) {
-	parts := [4]int{}
+type byStart []*Boundary
 
-	var piece int
-	var err error
-	piece, err = convertToInt(pieces[0])
-	if err != nil {
-		return 0, err
-	}
-	parts[0] = piece
-	piece, err = convertToInt(pieces[1])
-	if err != nil {
-		return 0, err
-	}
-	parts[1] = piece
-	piece, err = convertToInt(pieces[2])
-	if err != nil {
-		return 0, err
-	}
-	parts[2] = piece
-	piece, err = convertToInt(pieces[3])
-	if err != nil {
-		return 0, err
-	}
-	parts[3] = piece
+func (a byStart) Len() int           { return len(a) }
+func (a byStart) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a byStart) Less(i, j int) bool { return a[i].Start < a[j].Start }
 
-	return parts[0]*256*256*256 + parts[1]*256*256 + parts[2]*256 + parts[3], nil
+// GeoDB is a geo database that enables translating IP addresses to locations
+type GeoDB struct {
+	boundaries []*Boundary
 }
 
 // Lookup takes in an IPv4 IP address and returns a LatLon that that IP corresponds to.
@@ -67,30 +53,26 @@ func (g *GeoDB) Lookup(ip string) (*LatLon, error) {
 		return nil, fmt.Errorf("invalid IP pieces %s", ip)
 	}
 
-	idx := sort.SearchInts(g.blockBoundaries, num)
-
-	// There are three possible scenarios:
-	// 1. The number matches a start boundary exactly
-	// 2. The number matches an end boundary exactly
-	// 3. The number is between a start and an end boundary
-	// We'll check the idx +/- 1 to see if it matches any exactly, if so, we use that index.
-	// Otherwise we use the idx-1, which should be the start boundary
-	destIdx := idx - 1
-	if num == g.blockBoundaries[idx] {
-		destIdx = idx
-	}
-	if num == g.blockBoundaries[idx+1] {
-		destIdx = idx + 1
+	// sort.Search returns the smallest_ index for which the function returns true. Given that, we
+	// just need to return whether or not our IP is less than the end of the boundary.
+	idx := sort.Search(len(g.boundaries), func(idx int) bool {
+		boundary := g.boundaries[idx]
+		return num < boundary.End
+	})
+	// It's possible that our IP address isn't in a boundary, in which case it will return the index
+	// of the first boundary greater than our IP address. We can check for this case by making sure
+	// that the boundary start is smaller than our number.
+	if g.boundaries[idx].Start > num {
+		return nil, ErrIPMissing
 	}
 
-	return g.boundaryToLocation[g.blockBoundaries[destIdx]], nil
+	return g.boundaries[idx].LatLon, nil
 }
 
 // NewGeoDB constructs a new GeoDB using the location and block data at the given path.
 func NewGeoDB(path string) (*GeoDB, error) {
 	db := &GeoDB{
-		blockBoundaries:    []int{},
-		boundaryToLocation: map[int]*LatLon{},
+		boundaries: []*Boundary{},
 	}
 
 	locations, err := os.Open(path + "/GeoLiteCity-Location.csv")
@@ -143,16 +125,14 @@ func NewGeoDB(path string) (*GeoDB, error) {
 			return nil, fmt.Errorf("failed to find loc: %s", err)
 		}
 
-		db.blockBoundaries = append(db.blockBoundaries, start)
-		db.blockBoundaries = append(db.blockBoundaries, end)
-		db.boundaryToLocation[start] = locToLatLon[loc]
-		db.boundaryToLocation[end] = locToLatLon[loc]
+		boundary := &Boundary{Start: start, End: end, LatLon: locToLatLon[loc]}
+		db.boundaries = append(db.boundaries, boundary)
 	}
 	if t.Err() != nil {
 		return nil, t.Err()
 	}
 
-	sort.Ints(db.blockBoundaries)
+	sort.Sort(byStart(db.boundaries))
 
 	return db, nil
 }
@@ -173,4 +153,33 @@ func convertToFloat(field interface{}) (float64, error) {
 		return 0.0, fmt.Errorf("couldn't convert string %s", str)
 	}
 	return f, nil
+}
+
+func piecesToInt(pieces []string) (int, error) {
+	parts := [4]int{}
+
+	var piece int
+	var err error
+	piece, err = convertToInt(pieces[0])
+	if err != nil {
+		return 0, err
+	}
+	parts[0] = piece
+	piece, err = convertToInt(pieces[1])
+	if err != nil {
+		return 0, err
+	}
+	parts[1] = piece
+	piece, err = convertToInt(pieces[2])
+	if err != nil {
+		return 0, err
+	}
+	parts[2] = piece
+	piece, err = convertToInt(pieces[3])
+	if err != nil {
+		return 0, err
+	}
+	parts[3] = piece
+
+	return parts[0]*256*256*256 + parts[1]*256*256 + parts[2]*256 + parts[3], nil
 }

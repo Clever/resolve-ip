@@ -26,14 +26,20 @@ func main() {
 	})
 	http.HandleFunc("/ip/", func(rw http.ResponseWriter, r *http.Request) {
 		latlon, err := db.Lookup(strings.TrimLeft(r.URL.Path, "/ip/"))
+		if err == ErrIPMissing {
+			rw.WriteHeader(404)
+			return
+		}
 		if err != nil {
 			rw.WriteHeader(500)
 			rw.Write([]byte(err.Error()))
+			return
 		}
 		b, err := json.Marshal(latlon)
 		if err != nil {
 			rw.WriteHeader(500)
 			rw.Write([]byte(err.Error()))
+			return
 		}
 		rw.Write(b)
 	})
