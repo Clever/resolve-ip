@@ -25,7 +25,6 @@ publish:
     when:
       branch: master
 script:
-- tar xvzf GeoLiteCity_20100401.tar.gz
-- mv GeoLiteCity_20100401 GeoLiteCity
+- tar xvzf GeoLiteCity_20160301.tar.gz
 - make test
 - make build
