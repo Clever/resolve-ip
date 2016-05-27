@@ -3,6 +3,7 @@ run:
 env: []
 resources:
   cpu: .25
+  max_mem: 1
 expose:
 - name: http
   port: 80
