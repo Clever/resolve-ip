@@ -14,3 +14,4 @@ expose:
 elbs:
   production:
   - resolve-ip
+team: eng-classrooms
