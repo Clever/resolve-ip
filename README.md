@@ -1,7 +1,7 @@
 # resolve-ip
 `resolve-ip` is a service that takes in an IP address and converts it to a latitude and longitude.
 It includes GeoLite data created by MaxMind, available from 
-[http://wwww.maxmind.com](http://www.maxmind.com).
+[http://www.maxmind.com](http://www.maxmind.com).
 
 ## Endpoints
 
