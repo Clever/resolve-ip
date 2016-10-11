@@ -24,5 +24,13 @@ _testmain.go
 *.prof
 
 GeoLiteCity
-bin/
+build/
 vendor/
+# osx / sshfs
+._*
+.DS_Store
+
+# emacs / vim
+*~
+\#*\#
+.\#*

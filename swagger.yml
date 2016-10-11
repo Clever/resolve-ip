@@ -1,0 +1,46 @@
+swagger: '2.0'
+info:
+  title: resolve-ip
+  description: service that takes in an IP address and converts it to a latitude and longitude
+  version: 1.0.0
+schemes:
+  - http
+produces:
+  - application/json
+paths:
+  /healthcheck:
+    get:
+      operationId: healthCheck
+      description: Checks if the service is healthy
+      responses:
+        200:
+          description: OK response
+  /ip/{ip}:
+    get:
+      operationId: locationForIP
+      description: Gets the lat/lon for a given IP.
+      parameters:
+        - name: ip
+          in: path
+          description: The IP to try to locate
+          required: true
+          type: string
+      responses:
+        200:
+          description: Successfully found a location for the given IP
+          schema:
+            $ref: '#/definitions/IP'
+        404:
+          description: Was not able to determine the location for the given IP
+definitions:
+  IP:
+    type: object
+    properties:
+      lat:
+        type: number
+      lon:
+        type: number
+    additionalProperties: false
+    required:
+      - lat
+      - lon

@@ -11,8 +11,11 @@ import (
 	"gopkg.in/Clever/optimus.v3/sources/csv"
 )
 
-// ErrIPMissing is return when the input IP address doesn't exist in any of our IP blocks
+// ErrIPMissing is returned when the input IP address doesn't exist in any of our IP blocks
 var ErrIPMissing = errors.New("IP address isn't in any of our IP blocks")
+
+// ErrBadIP is returned when the IP is not a valid IP
+var ErrBadIP = errors.New("IP address is not a valid IPv4 IP")
 
 // LatLon contains a latitude and a longitude
 type LatLon struct {
@@ -45,12 +48,12 @@ type GeoDB struct {
 func (g GeoDB) Lookup(ip string) (LatLon, error) {
 	pieces := strings.Split(ip, ".")
 	if len(pieces) != 4 {
-		return LatLon{}, fmt.Errorf("invalid IP %s", ip)
+		return LatLon{}, ErrBadIP
 	}
 
 	num, err := piecesToInt(pieces)
 	if err != nil {
-		return LatLon{}, fmt.Errorf("invalid IP pieces %s", ip)
+		return LatLon{}, ErrBadIP
 	}
 
 	// sort.Search returns the smallest_ index for which the function returns true. Given that, we
