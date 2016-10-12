@@ -1,0 +1,20 @@
+hash: 20217409d97e232a2722866d963b8b9234cf72dfe2fb331de1422f5b111f3b24
+updated: 2016-10-11T18:04:11.203857955-07:00
+imports:
+- name: github.com/davecgh/go-spew
+  version: 5215b55f46b2b919f50a1df0eaa5886afe4e3b3d
+  subpackages:
+  - spew
+- name: github.com/pmezard/go-difflib
+  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
+  subpackages:
+  - difflib
+- name: github.com/stretchr/testify
+  version: 67106a5111a06241c8d84952c33214675f51a34a
+  subpackages:
+  - assert
+- name: gopkg.in/Clever/optimus.v3
+  version: adba1ec91df15f8b00c97a62e5ea6c348b3e0b7d
+  subpackages:
+  - sources/csv
+testImports: []
