@@ -26,5 +26,6 @@ publish:
   report_card: {}
 script:
 - tar xvzf GeoLiteCity_20160301.tar.gz
+- make install_deps
 - make test
 - make build

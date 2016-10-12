@@ -27,8 +27,11 @@ test: $(PKGS)
 $(PKGS): golang-test-all-deps
 	$(call golang-test-all,$@)
 
-vendor: golang-godep-vendor-deps
-	$(call golang-godep-vendor,$(PKGS))
-
 run:
 	ENV=staging MONGO_DB=clever AWS_REGION=us-west-1 go run main.go -port=5007
+
+$(GOPATH)/bin/glide:
+	@go get github.com/Masterminds/glide
+
+install_deps: $(GOPATH)/bin/glide
+	@$(GOPATH)/bin/glide install
