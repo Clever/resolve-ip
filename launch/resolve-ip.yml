@@ -1,6 +1,5 @@
-run:
-  type: docker
-env: []
+env:
+- LIGHTSTEP_ACCESS_TOKEN
 resources:
   cpu: .25
   max_mem: 1
@@ -11,7 +10,7 @@ expose:
   health_check:
     type: http
     path: /healthcheck
-elbs:
-  production:
-  - resolve-ip
+- name: pprof
+  port: 6060
+  bind: 6060
 team: eng-classrooms

@@ -1,8 +1,9 @@
-FROM debian:jessie
+FROM gliderlabs/alpine:3.3
 
-COPY bin/resolve-ip /usr/bin/resolve-ip
-COPY GeoLiteCity /usr/bin/GeoLiteCity
+COPY GeoLiteCity /bin/GeoLiteCity
 
-WORKDIR /usr/bin
+RUN apk-install ca-certificates
+COPY build/resolve-ip /bin/resolve-ip
 
-CMD ["/usr/bin/resolve-ip"]
+CMD ["/bin/resolve-ip", "--addr=0.0.0.0:80"]
+

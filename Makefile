@@ -1,34 +1,38 @@
+include swagger.mk
 include golang.mk
-.DEFAULT_GOAL := test # override default goal set in library makefile
 
+.PHONY: all test build run
 SHELL := /bin/bash
-PKG := github.com/Clever/resolve-ip
-PKGS := $(shell go list ./... | grep -v /vendor)
-EXECUTABLE := $(shell basename $(PKG))
-.PHONY: test build vendor $(PKGS) $(SCRIPTS)
+APP_NAME ?= resolve-ip
+EXECUTABLE = $(APP_NAME)
+PKG = github.com/Clever/$(APP_NAME)
+PKGS := $(shell go list ./... | grep -v /vendor | grep -v /gen-go)
+
+SWAGGER_CONFIG := swagger.yml
+SWAGGER_CLIENT_NPM_PACKAGE_NAME := @clever/resolve-ip
+SWAGGER_CLIENT_NPM_PACKAGE_VERSION := 0.1.0
+SWAGGER_CLIENT_NPM_PACKAGE_MODULE_NAME := resolve-ip
 
 $(eval $(call golang-version-check,1.7))
 
 all: test build
 
-# builds every Go script found in scripts/. prefix is to prevent overlap w/ $(PKGS)
-SCRIPTS :=  $(addprefix script/, $(shell go list ./... | grep /scripts))
-$(SCRIPTS):
-	go build -o bin/$(shell basename $@) $(@:script/%=%)
-
-build: $(SCRIPTS)
-	go build -o bin/$(EXECUTABLE) $(PKG)
-
-clean:
-	rm bin/*
-
 test: $(PKGS)
+$(PKGS): golang-test-all-strict-deps
+	$(call golang-test-all-strict,$@)
 
-$(PKGS): golang-test-all-deps
-	$(call golang-test-all,$@)
+build:
+	go build -o build/$(EXECUTABLE) $(PKG)
 
-run:
-	ENV=staging MONGO_DB=clever AWS_REGION=us-west-1 go run main.go -port=5007
+run: build
+	build/$(EXECUTABLE)
+
+validate: swagger-validate-deps
+	$(call swagger-validate,$(SWAGGER_CONFIG))
+
+generate: validate swagger-generate-go-deps swagger-generate-javascript-client-deps
+	$(call swagger-generate-go,$(SWAGGER_CONFIG),$(PKG),$(PKG)/gen-go)
+	$(call swagger-generate-javascript-client,$(SWAGGER_CONFIG),$(SWAGGER_CLIENT_NPM_PACKAGE_NAME),$(SWAGGER_CLIENT_NPM_PACKAGE_VERSION),$(SWAGGER_CLIENT_NPM_PACKAGE_MODULE_NAME))
 
 $(GOPATH)/bin/glide:
 	@go get github.com/Masterminds/glide

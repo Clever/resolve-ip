@@ -3,11 +3,6 @@ notify:
   email:
     recipients:
     - drone@clever.com
-  slack:
-    on_failure: true
-    on_started: false
-    on_success: false
-    webhook_url: $$slack_webhook
 publish:
   catapult:
     url: $$catapult_url
@@ -23,7 +18,14 @@ publish:
     username: $$docker_username
     when:
       branch: master
-  report_card: {}
+  npm:
+    email: $$npm_drone_email
+    folder: gen-js/
+    password: $$npm_drone_password
+    registry: https://registry.npmjs.org
+    username: $$npm_drone_username
+    when:
+      branch: master
 script:
 - tar xvzf GeoLiteCity_20160301.tar.gz
 - make install_deps
