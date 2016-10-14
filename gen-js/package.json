@@ -1,6 +1,6 @@
 {
   "name": "@clever/resolve-ip",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "service_that_takes_in_an_IP_address_and_converts_it_to_a_latitude_and_longitude",
   "license": "Apache-2.0",
   "main": "src/index.js",
