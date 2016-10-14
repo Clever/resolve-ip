@@ -20,8 +20,8 @@ var _ = strings.Replace
 var _ = strconv.FormatInt
 var _ = bytes.Compare
 
-// Client is used to make requests to the resolve-ip service.
-type Client struct {
+// WagClient is used to make requests to the resolve-ip service.
+type WagClient struct {
 	basePath    string
 	requestDoer doer
 	transport   *http.Transport
@@ -31,19 +31,21 @@ type Client struct {
 	defaultTimeout time.Duration
 }
 
+var _ Client = (*WagClient)(nil)
+
 // New creates a new client. The base path and http transport are configurable.
-func New(basePath string) *Client {
+func New(basePath string) *WagClient {
 	base := baseDoer{}
 	tracing := tracingDoer{d: base}
 	retry := retryDoer{d: tracing, defaultRetries: 1}
 
-	return &Client{requestDoer: &retry, retryDoer: &retry, defaultTimeout: 10 * time.Second,
+	return &WagClient{requestDoer: &retry, retryDoer: &retry, defaultTimeout: 10 * time.Second,
 		transport: &http.Transport{}, basePath: basePath}
 }
 
 // NewFromDiscovery creates a client from the discovery environment variables. This method requires
 // the three env vars: SERVICE_RESOLVE_IP_HTTP_(HOST/PORT/PROTO) to be set. Otherwise it returns an error.
-func NewFromDiscovery() (*Client, error) {
+func NewFromDiscovery() (*WagClient, error) {
 	url, err := discovery.URL("resolve-ip", "http")
 	if err != nil {
 		return nil, err
@@ -53,14 +55,14 @@ func NewFromDiscovery() (*Client, error) {
 
 // WithRetries returns a new client that retries all GET operations until they either succeed or fail the
 // number of times specified.
-func (c *Client) WithRetries(retries int) *Client {
+func (c *WagClient) WithRetries(retries int) *WagClient {
 	c.retryDoer.defaultRetries = retries
 	return c
 }
 
 // WithTimeout returns a new client that has the specified timeout on all operations. To make a single request
 // have a timeout use context.WithTimeout as described here: https://godoc.org/golang.org/x/net/context#WithTimeout.
-func (c *Client) WithTimeout(timeout time.Duration) *Client {
+func (c *WagClient) WithTimeout(timeout time.Duration) *WagClient {
 	c.defaultTimeout = timeout
 	return c
 }
@@ -90,7 +92,7 @@ func JoinByFormat(data []string, format string) string {
 
 // HealthCheck makes a GET request to /healthcheck.
 // Checks if the service is healthy
-func (c *Client) HealthCheck(ctx context.Context) error {
+func (c *WagClient) HealthCheck(ctx context.Context) error {
 	path := c.basePath + "/healthcheck"
 	urlVals := url.Values{}
 	var body []byte
@@ -147,7 +149,7 @@ func (c *Client) HealthCheck(ctx context.Context) error {
 
 // LocationForIP makes a GET request to /ip/{ip}.
 // Gets the lat/lon for a given IP.
-func (c *Client) LocationForIP(ctx context.Context, i *models.LocationForIPInput) (*models.IP, error) {
+func (c *WagClient) LocationForIP(ctx context.Context, i *models.LocationForIPInput) (*models.IP, error) {
 	path := c.basePath + "/ip/{ip}"
 	urlVals := url.Values{}
 	var body []byte

@@ -10,7 +10,7 @@ PKGS := $(shell go list ./... | grep -v /vendor | grep -v /gen-go)
 
 SWAGGER_CONFIG := swagger.yml
 SWAGGER_CLIENT_NPM_PACKAGE_NAME := @clever/resolve-ip
-SWAGGER_CLIENT_NPM_PACKAGE_VERSION := 0.1.0
+SWAGGER_CLIENT_NPM_PACKAGE_VERSION := 0.1.1
 SWAGGER_CLIENT_NPM_PACKAGE_MODULE_NAME := resolve-ip
 
 $(eval $(call golang-version-check,1.7))
