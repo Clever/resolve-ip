@@ -9,9 +9,9 @@ PKG = github.com/Clever/$(APP_NAME)
 PKGS := $(shell go list ./... | grep -v /vendor | grep -v /gen-go)
 
 SWAGGER_CONFIG := swagger.yml
-SWAGGER_CLIENT_NPM_PACKAGE_NAME := @clever/resolve-ip
-SWAGGER_CLIENT_NPM_PACKAGE_VERSION := 0.1.2
-SWAGGER_CLIENT_NPM_PACKAGE_MODULE_NAME := resolve-ip
+SWAGGER_CLIENT_NPM_PACKAGE_NAME := resolve-ip
+SWAGGER_CLIENT_NPM_PACKAGE_VERSION := 1.0.0
+SWAGGER_CLIENT_NPM_PACKAGE_MODULE_NAME := resolveIP
 
 $(eval $(call golang-version-check,1.7))
 

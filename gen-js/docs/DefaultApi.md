@@ -1,4 +1,4 @@
-# resolve-ip.DefaultApi
+# resolveIP.DefaultApi
 
 All URIs are relative to *http://localhost*
 
@@ -18,9 +18,9 @@ Checks if the service is healthy
 
 ### Example
 ```javascript
-var resolve-ip = require('@clever/resolve-ip');
+var resolveIP = require('resolve-ip');
 
-var apiInstance = new resolve-ip.DefaultApi();
+var apiInstance = new resolveIP.DefaultApi();
 apiInstance.healthCheck().then(function() {
   console.log('API called successfully.');
 }, function(error) {
@@ -55,9 +55,9 @@ Gets the lat/lon for a given IP.
 
 ### Example
 ```javascript
-var resolve-ip = require('@clever/resolve-ip');
+var resolveIP = require('resolve-ip');
 
-var apiInstance = new resolve-ip.DefaultApi();
+var apiInstance = new resolveIP.DefaultApi();
 
 var ip = "ip_example"; // String | The IP to try to locate
 

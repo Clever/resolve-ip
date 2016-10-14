@@ -2,7 +2,7 @@ swagger: '2.0'
 info:
   title: resolve-ip
   description: service that takes in an IP address and converts it to a latitude and longitude
-  version: 0.1.2
+  version: 1.0.0
 schemes:
   - http
 produces:

@@ -1,4 +1,4 @@
-# resolve-ip.IP
+# resolveIP.IP
 
 ## Properties
 Name | Type | Description | Notes
