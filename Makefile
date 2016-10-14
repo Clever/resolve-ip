@@ -22,7 +22,7 @@ $(PKGS): golang-test-all-strict-deps
 	$(call golang-test-all-strict,$@)
 
 build:
-	go build -o build/$(EXECUTABLE) $(PKG)
+	CGO_ENABLED=0 go build -installsuffix cgo -o build/$(EXECUTABLE) $(PKG)
 
 run: build
 	build/$(EXECUTABLE)
