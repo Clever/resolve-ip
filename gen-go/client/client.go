@@ -4,13 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/Clever/resolve-ip/gen-go/models"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/Clever/resolve-ip/gen-go/models"
 
 	discovery "github.com/Clever/discovery-go"
 )
@@ -46,9 +45,12 @@ func New(basePath string) *WagClient {
 // NewFromDiscovery creates a client from the discovery environment variables. This method requires
 // the three env vars: SERVICE_RESOLVE_IP_HTTP_(HOST/PORT/PROTO) to be set. Otherwise it returns an error.
 func NewFromDiscovery() (*WagClient, error) {
-	url, err := discovery.URL("resolve-ip", "http")
+	url, err := discovery.URL("resolve-ip", "default")
 	if err != nil {
-		return nil, err
+		url, err = discovery.URL("resolve-ip", "http") // Added fallback to maintain reverse compatibility
+		if err != nil {
+			return nil, err
+		}
 	}
 	return New(url), nil
 }
@@ -127,19 +129,21 @@ func (c *WagClient) HealthCheck(ctx context.Context) error {
 	switch resp.StatusCode {
 	case 200:
 		return nil
-
 	case 400:
 		var output models.DefaultBadRequest
+
 		if err := json.NewDecoder(resp.Body).Decode(&output); err != nil {
 			return models.DefaultInternalError{Msg: err.Error()}
 		}
-		return output
 
+		return output
 	case 500:
 		var output models.DefaultInternalError
+
 		if err := json.NewDecoder(resp.Body).Decode(&output); err != nil {
 			return models.DefaultInternalError{Msg: err.Error()}
 		}
+
 		return output
 
 	default:
@@ -154,7 +158,7 @@ func (c *WagClient) LocationForIP(ctx context.Context, i *models.LocationForIPIn
 	urlVals := url.Values{}
 	var body []byte
 
-	path = strings.Replace(path, "{ip}", i.Ip, -1)
+	path = strings.Replace(path, "{ip}", i.IP, -1)
 	path = path + "?" + urlVals.Encode()
 
 	client := &http.Client{Transport: c.transport}
@@ -184,28 +188,31 @@ func (c *WagClient) LocationForIP(ctx context.Context, i *models.LocationForIPIn
 	defer resp.Body.Close()
 	switch resp.StatusCode {
 	case 200:
-
 		var output models.IP
+
 		if err := json.NewDecoder(resp.Body).Decode(&output); err != nil {
 			return nil, models.DefaultInternalError{Msg: err.Error()}
 		}
+
 		return &output, nil
 	case 404:
 		var output models.LocationForIP404Output
 		return nil, output
-
 	case 400:
 		var output models.DefaultBadRequest
+
 		if err := json.NewDecoder(resp.Body).Decode(&output); err != nil {
 			return nil, models.DefaultInternalError{Msg: err.Error()}
 		}
-		return nil, output
 
+		return nil, output
 	case 500:
 		var output models.DefaultInternalError
+
 		if err := json.NewDecoder(resp.Body).Decode(&output); err != nil {
 			return nil, models.DefaultInternalError{Msg: err.Error()}
 		}
+
 		return nil, output
 
 	default:

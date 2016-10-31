@@ -26,7 +26,7 @@ func (i HealthCheckInput) Validate() error {
 
 // LocationForIPInput holds the input parameters for a locationForIP operation.
 type LocationForIPInput struct {
-	Ip string
+	IP string
 }
 
 // Validate returns an error if any of the LocationForIPInput parameters don't satisfy the

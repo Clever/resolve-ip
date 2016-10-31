@@ -26,7 +26,7 @@ func (h handler) HealthCheck(ctx context.Context) error {
 }
 
 func (h handler) LocationForIP(ctx context.Context, i *models.LocationForIPInput) (*models.IP, error) {
-	latlon, err := h.db.Lookup(i.Ip)
+	latlon, err := h.db.Lookup(i.IP)
 	if err == ErrIPMissing {
 		return nil, models.LocationForIP404Output{}
 	}
