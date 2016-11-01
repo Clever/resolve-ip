@@ -1,21 +1,11 @@
 {
   "name": "resolve-ip",
-  "version": "1.0.0",
-  "description": "service_that_takes_in_an_IP_address_and_converts_it_to_a_latitude_and_longitude",
-  "license": "Apache-2.0",
-  "main": "src/index.js",
-  "scripts": {
-    "test": "./node_modules/mocha/bin/mocha --recursive"
-  },
-  "peerDependencies": {
-    "opentracing": "*"
-  },
+  "version": "2.0.0",
+  "description": "service that takes in an IP address and converts it to a latitude and longitude",
+  "main": "index.js",
   "dependencies": {
-    "superagent": "1.7.1"
-  },
-  "devDependencies": {
-    "mocha": "~2.3.4",
-    "sinon": "1.17.3",
-    "expect.js": "~0.3.1"
+    "@clever/discovery": "0.0.8",
+    "opentracing": "^0.11.1",
+    "request": "^2.75.0"
   }
 }

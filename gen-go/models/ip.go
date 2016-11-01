@@ -10,22 +10,16 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-/*IP IP
-
-swagger:model IP
-*/
+// IP IP
+// swagger:model IP
 type IP struct {
 
-	/* lat
-
-	Required: true
-	*/
+	// lat
+	// Required: true
 	Lat *float64 `json:"lat"`
 
-	/* lon
-
-	Required: true
-	*/
+	// lon
+	// Required: true
 	Lon *float64 `json:"lon"`
 }
 

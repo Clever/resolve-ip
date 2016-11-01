@@ -65,17 +65,34 @@ func jsonMarshalNoError(i interface{}) string {
 	}
 	return string(bytes)
 }
+
+// statusCodeForHealthCheck returns the status code corresponding to the returned
+// object. It returns -1 if the type doesn't correspond to anything.
+func statusCodeForHealthCheck(obj interface{}) int {
+
+	switch obj.(type) {
+
+	case models.DefaultBadRequest:
+		return 400
+	case models.DefaultInternalError:
+		return 500
+	default:
+		return -1
+	}
+}
+
 func (h handler) HealthCheckHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 
 	err := h.HealthCheck(ctx)
 
 	if err != nil {
-		if respErr, ok := err.(models.HealthCheckError); ok {
-			http.Error(w, respErr.Error(), respErr.HealthCheckStatusCode())
-			return
-		}
 		logger.FromContext(ctx).AddContext("error", err.Error())
-		http.Error(w, jsonMarshalNoError(models.DefaultInternalError{Msg: err.Error()}), http.StatusInternalServerError)
+		statusCode := statusCodeForHealthCheck(err)
+		if statusCode != -1 {
+			http.Error(w, err.Error(), statusCode)
+		} else {
+			http.Error(w, jsonMarshalNoError(models.DefaultInternalError{Msg: err.Error()}), http.StatusInternalServerError)
+		}
 		return
 	}
 
@@ -92,6 +109,33 @@ func newHealthCheckInput(r *http.Request) (*models.HealthCheckInput, error) {
 	_ = err
 
 	return &input, nil
+}
+
+// statusCodeForLocationForIP returns the status code corresponding to the returned
+// object. It returns -1 if the type doesn't correspond to anything.
+func statusCodeForLocationForIP(obj interface{}) int {
+
+	switch obj.(type) {
+
+	case *models.IP:
+		return 200
+
+	case *models.LocationForIP404Output:
+		return 404
+
+	case models.IP:
+		return 200
+
+	case models.LocationForIP404Output:
+		return 404
+
+	case models.DefaultBadRequest:
+		return 400
+	case models.DefaultInternalError:
+		return 500
+	default:
+		return -1
+	}
 }
 
 func (h handler) LocationForIPHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
@@ -113,12 +157,13 @@ func (h handler) LocationForIPHandler(ctx context.Context, w http.ResponseWriter
 	resp, err := h.LocationForIP(ctx, input)
 
 	if err != nil {
-		if respErr, ok := err.(models.LocationForIPError); ok {
-			http.Error(w, respErr.Error(), respErr.LocationForIPStatusCode())
-			return
-		}
 		logger.FromContext(ctx).AddContext("error", err.Error())
-		http.Error(w, jsonMarshalNoError(models.DefaultInternalError{Msg: err.Error()}), http.StatusInternalServerError)
+		statusCode := statusCodeForLocationForIP(err)
+		if statusCode != -1 {
+			http.Error(w, err.Error(), statusCode)
+		} else {
+			http.Error(w, jsonMarshalNoError(models.DefaultInternalError{Msg: err.Error()}), http.StatusInternalServerError)
+		}
 		return
 	}
 
@@ -130,7 +175,7 @@ func (h handler) LocationForIPHandler(ctx context.Context, w http.ResponseWriter
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
+	w.WriteHeader(statusCodeForLocationForIP(resp))
 	w.Write(respBytes)
 
 }
@@ -142,17 +187,17 @@ func newLocationForIPInput(r *http.Request) (*models.LocationForIPInput, error) 
 	var err error
 	_ = err
 
-	ipStr := mux.Vars(r)["ip"]
-	if len(ipStr) == 0 {
+	iPStr := mux.Vars(r)["ip"]
+	if len(iPStr) == 0 {
 		return nil, errors.New("Parameter must be specified")
 	}
-	if len(ipStr) != 0 {
-		var ipTmp string
-		ipTmp, err = ipStr, error(nil)
+	if len(iPStr) != 0 {
+		var iPTmp string
+		iPTmp, err = iPStr, error(nil)
 		if err != nil {
 			return nil, err
 		}
-		input.Ip = ipTmp
+		input.IP = iPTmp
 
 	}
 

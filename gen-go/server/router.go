@@ -62,6 +62,7 @@ func New(c Controller, addr string) *Server {
 		logger.FromContext(r.Context()).AddContext("op", "locationForIP")
 		h.LocationForIPHandler(r.Context(), w, r)
 	})
+
 	handler := withMiddleware("resolve-ip", r)
 	return &Server{Handler: handler, addr: addr, l: l}
 }
