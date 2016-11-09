@@ -2,12 +2,21 @@ swagger: '2.0'
 info:
   title: resolve-ip
   description: service that takes in an IP address and converts it to a latitude and longitude
-  version: 2.0.1
+  version: 2.1.0
   x-npm-package: resolve-ip
 schemes:
   - http
 produces:
   - application/json
+responses:
+  BadRequest:
+    description: "Bad Request"
+    schema:
+      $ref: "#/definitions/BadRequest"
+  InternalError:
+    description: "Internal Error"
+    schema:
+      $ref: "#/definitions/InternalError"
 paths:
   /healthcheck:
     get:
@@ -33,6 +42,8 @@ paths:
             $ref: '#/definitions/IP'
         404:
           description: Was not able to determine the location for the given IP
+          schema:
+            $ref: '#/definitions/NotFound'
 definitions:
   IP:
     type: object
@@ -41,7 +52,21 @@ definitions:
         type: number
       lon:
         type: number
-    additionalProperties: false
     required:
       - lat
       - lon
+  InternalError:
+    type: object
+    properties:
+      message:
+        type: string
+  BadRequest:
+    type: object
+    properties:
+      message:
+        type: string
+  NotFound:
+    type: object
+    properties:
+      message:
+        type: string

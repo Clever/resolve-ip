@@ -1,7 +1,7 @@
 include wag.mk
 include golang.mk
 
-WAG_VERSION := 0.1.0
+WAG_VERSION := latest
 
 .PHONY: all test build run
 SHELL := /bin/bash
