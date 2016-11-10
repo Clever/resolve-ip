@@ -29,8 +29,8 @@ type LocationForIPInput struct {
 	IP string
 }
 
-// Validate returns an error if any of the LocationForIPInput parameters don't satisfy the
-// requirements from the swagger yml file.
-func (i LocationForIPInput) Validate() error {
+// ValidateLocationForIPInput returns an error if the input parameter doesn't
+// satisfy the requirements in the swagger yml file.
+func ValidateLocationForIPInput(ip string) error {
 	return nil
 }

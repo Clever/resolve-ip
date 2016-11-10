@@ -40,8 +40,8 @@ func (_mr *_MockClientRecorder) HealthCheck(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "HealthCheck", arg0)
 }
 
-func (_m *MockClient) LocationForIP(ctx context.Context, i *models.LocationForIPInput) (*models.IP, error) {
-	ret := _m.ctrl.Call(_m, "LocationForIP", ctx, i)
+func (_m *MockClient) LocationForIP(ctx context.Context, ip string) (*models.IP, error) {
+	ret := _m.ctrl.Call(_m, "LocationForIP", ctx, ip)
 	ret0, _ := ret[0].(*models.IP)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1

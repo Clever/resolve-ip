@@ -1,6 +1,6 @@
 {
   "name": "resolve-ip",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "description": "service that takes in an IP address and converts it to a latitude and longitude",
   "main": "index.js",
   "dependencies": {
