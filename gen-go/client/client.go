@@ -3,8 +3,9 @@ package client
 import (
 	"bytes"
 	"context"
+	"crypto/md5"
 	"encoding/json"
-	"github.com/Clever/resolve-ip/gen-go/models"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -12,6 +13,8 @@ import (
 	"time"
 
 	discovery "github.com/Clever/discovery-go"
+	"github.com/Clever/resolve-ip/gen-go/models"
+	"github.com/afex/hystrix-go/hystrix"
 )
 
 var _ = json.Marshal
@@ -26,7 +29,9 @@ type WagClient struct {
 	transport   *http.Transport
 	timeout     time.Duration
 	// Keep the retry doer around so that we can set the number of retries
-	retryDoer      *retryDoer
+	retryDoer *retryDoer
+	// Keep the circuit doer around so that we can turn it on / off
+	circuitDoer    *circuitBreakerDoer
 	defaultTimeout time.Duration
 }
 
@@ -36,10 +41,20 @@ var _ Client = (*WagClient)(nil)
 func New(basePath string) *WagClient {
 	base := baseDoer{}
 	tracing := tracingDoer{d: base}
-	retry := retryDoer{d: tracing, defaultRetries: 1}
-
-	return &WagClient{requestDoer: &retry, retryDoer: &retry, defaultTimeout: 10 * time.Second,
+	// For the short-term don't use the default retry policy since its 5 retries can 5X
+	// the traffic. Once we've enabled circuit breakers by default we can turn it on.
+	retry := retryDoer{d: tracing, retryPolicy: SingleRetryPolicy{}}
+	circuit := &circuitBreakerDoer{
+		d:     &retry,
+		debug: true,
+		// one circuit for each service + url pair
+		circuitName: fmt.Sprintf("resolve-ip-%s", shortHash(basePath)),
+	}
+	circuit.init()
+	client := &WagClient{requestDoer: circuit, retryDoer: &retry, circuitDoer: circuit, defaultTimeout: 10 * time.Second,
 		transport: &http.Transport{}, basePath: basePath}
+	client.SetCircuitBreakerSettings(DefaultCircuitBreakerSettings)
+	return client
 }
 
 // NewFromDiscovery creates a client from the discovery environment variables. This method requires
@@ -55,45 +70,67 @@ func NewFromDiscovery() (*WagClient, error) {
 	return New(url), nil
 }
 
-// WithRetries returns a new client that retries all GET operations until they either succeed or fail the
-// number of times specified.
-func (c *WagClient) WithRetries(retries int) *WagClient {
-	c.retryDoer.defaultRetries = retries
-	return c
+// SetRetryPolicy sets a the given retry policy for all requests.
+func (c *WagClient) SetRetryPolicy(retryPolicy RetryPolicy) {
+	c.retryDoer.retryPolicy = retryPolicy
 }
 
-// WithTimeout returns a new client that has the specified timeout on all operations. To make a single request
-// have a timeout use context.WithTimeout as described here: https://godoc.org/golang.org/x/net/context#WithTimeout.
-func (c *WagClient) WithTimeout(timeout time.Duration) *WagClient {
+// SetCircuitBreakerDebug puts the circuit
+func (c *WagClient) SetCircuitBreakerDebug(b bool) {
+	c.circuitDoer.debug = b
+}
+
+// CircuitBreakerSettings are the parameters that govern the client's circuit breaker.
+type CircuitBreakerSettings struct {
+	// MaxConcurrentRequests is the maximum number of concurrent requests
+	// the client can make at the same time. Default: 100.
+	MaxConcurrentRequests int
+	// RequestVolumeThreshold is the minimum number of requests needed
+	// before a circuit can be tripped due to health. Default: 20.
+	RequestVolumeThreshold int
+	// SleepWindow how long, in milliseconds, to wait after a circuit opens
+	// before testing for recovery. Default: 5000.
+	SleepWindow int
+	// ErrorPercentThreshold is the threshold to place on the rolling error
+	// rate. Once the error rate exceeds this percentage, the circuit opens.
+	// Default: 90.
+	ErrorPercentThreshold int
+}
+
+// DefaultCircuitBreakerSettings describes the default circuit parameters.
+var DefaultCircuitBreakerSettings = CircuitBreakerSettings{
+	MaxConcurrentRequests:  100,
+	RequestVolumeThreshold: 20,
+	SleepWindow:            5000,
+	ErrorPercentThreshold:  90,
+}
+
+// SetCircuitBreakerSettings sets parameters on the circuit breaker. It must be
+// called on application startup.
+func (c *WagClient) SetCircuitBreakerSettings(settings CircuitBreakerSettings) {
+	hystrix.ConfigureCommand(c.circuitDoer.circuitName, hystrix.CommandConfig{
+		// redundant, with the timeout we set on the context, so set
+		// this to something high and irrelevant
+		Timeout:                100 * 1000,
+		MaxConcurrentRequests:  settings.MaxConcurrentRequests,
+		RequestVolumeThreshold: settings.RequestVolumeThreshold,
+		SleepWindow:            settings.SleepWindow,
+		ErrorPercentThreshold:  settings.ErrorPercentThreshold,
+	})
+}
+
+// SetTimeout sets a timeout on all operations for the client. To make a single request
+// with a timeout use context.WithTimeout as described here: https://godoc.org/golang.org/x/net/context#WithTimeout.
+func (c *WagClient) SetTimeout(timeout time.Duration) {
 	c.defaultTimeout = timeout
-	return c
 }
 
-// JoinByFormat joins a string array by a known format:
-//	 csv: comma separated value (default)
-//	 ssv: space separated value
-//	 tsv: tab separated value
-//	 pipes: pipe (|) separated value
-func JoinByFormat(data []string, format string) string {
-	if len(data) == 0 {
-		return ""
-	}
-	var sep string
-	switch format {
-	case "ssv":
-		sep = " "
-	case "tsv":
-		sep = "\t"
-	case "pipes":
-		sep = "|"
-	default:
-		sep = ","
-	}
-	return strings.Join(data, sep)
-}
-
-// HealthCheck makes a GET request to /healthcheck.
+// HealthCheck makes a GET request to /healthcheck
 // Checks if the service is healthy
+// 200: nil
+// 400: *models.BadRequest
+// 500: *models.InternalError
+// default: client side HTTP errors, for example: context.DeadlineExceeded.
 func (c *WagClient) HealthCheck(ctx context.Context) error {
 	path := c.basePath + "/healthcheck"
 	urlVals := url.Values{}
@@ -122,43 +159,50 @@ func (c *WagClient) HealthCheck(ctx context.Context) error {
 	resp, err := c.requestDoer.Do(client, req)
 
 	if err != nil {
-		return models.DefaultInternalError{Msg: err.Error()}
+		return err
 	}
 
 	defer resp.Body.Close()
 	switch resp.StatusCode {
+
 	case 200:
+
 		return nil
+
 	case 400:
-		var output models.DefaultBadRequest
 
+		var output models.BadRequest
 		if err := json.NewDecoder(resp.Body).Decode(&output); err != nil {
-			return models.DefaultInternalError{Msg: err.Error()}
+			return err
 		}
+		return &output
 
-		return output
 	case 500:
-		var output models.DefaultInternalError
 
+		var output models.InternalError
 		if err := json.NewDecoder(resp.Body).Decode(&output); err != nil {
-			return models.DefaultInternalError{Msg: err.Error()}
+			return err
 		}
-
-		return output
+		return &output
 
 	default:
-		return models.DefaultInternalError{Msg: "Unknown response"}
+		return &models.InternalError{Message: "Unknown response"}
 	}
 }
 
-// LocationForIP makes a GET request to /ip/{ip}.
+// LocationForIP makes a GET request to /ip/{ip}
 // Gets the lat/lon for a given IP.
-func (c *WagClient) LocationForIP(ctx context.Context, i *models.LocationForIPInput) (*models.IP, error) {
+// 200: *models.IP
+// 400: *models.BadRequest
+// 404: *models.NotFound
+// 500: *models.InternalError
+// default: client side HTTP errors, for example: context.DeadlineExceeded.
+func (c *WagClient) LocationForIP(ctx context.Context, ip string) (*models.IP, error) {
 	path := c.basePath + "/ip/{ip}"
 	urlVals := url.Values{}
 	var body []byte
 
-	path = strings.Replace(path, "{ip}", i.IP, -1)
+	path = strings.Replace(path, "{ip}", ip, -1)
 	path = path + "?" + urlVals.Encode()
 
 	client := &http.Client{Transport: c.transport}
@@ -182,40 +226,49 @@ func (c *WagClient) LocationForIP(ctx context.Context, i *models.LocationForIPIn
 	resp, err := c.requestDoer.Do(client, req)
 
 	if err != nil {
-		return nil, models.DefaultInternalError{Msg: err.Error()}
+		return nil, err
 	}
 
 	defer resp.Body.Close()
 	switch resp.StatusCode {
+
 	case 200:
+
 		var output models.IP
-
 		if err := json.NewDecoder(resp.Body).Decode(&output); err != nil {
-			return nil, models.DefaultInternalError{Msg: err.Error()}
+			return nil, err
 		}
-
 		return &output, nil
-	case 404:
-		var output models.LocationForIP404Output
-		return nil, output
+
 	case 400:
-		var output models.DefaultBadRequest
 
+		var output models.BadRequest
 		if err := json.NewDecoder(resp.Body).Decode(&output); err != nil {
-			return nil, models.DefaultInternalError{Msg: err.Error()}
+			return nil, err
 		}
+		return nil, &output
 
-		return nil, output
+	case 404:
+
+		var output models.NotFound
+		if err := json.NewDecoder(resp.Body).Decode(&output); err != nil {
+			return nil, err
+		}
+		return nil, &output
+
 	case 500:
-		var output models.DefaultInternalError
 
+		var output models.InternalError
 		if err := json.NewDecoder(resp.Body).Decode(&output); err != nil {
-			return nil, models.DefaultInternalError{Msg: err.Error()}
+			return nil, err
 		}
-
-		return nil, output
+		return nil, &output
 
 	default:
-		return nil, models.DefaultInternalError{Msg: "Unknown response"}
+		return nil, &models.InternalError{Message: "Unknown response"}
 	}
+}
+
+func shortHash(s string) string {
+	return fmt.Sprintf("%x", md5.Sum([]byte(s)))[0:6]
 }

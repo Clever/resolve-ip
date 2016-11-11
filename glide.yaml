@@ -32,6 +32,7 @@ import:
   - sources/csv
 - package: gopkg.in/tylerb/graceful.v1
   version: ^1.2.13
+- package: github.com/go-errors/errors
 testImport:
 - package: github.com/stretchr/testify
   version: ^1.1.4

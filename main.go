@@ -25,16 +25,16 @@ func (h handler) HealthCheck(ctx context.Context) error {
 	return nil
 }
 
-func (h handler) LocationForIP(ctx context.Context, i *models.LocationForIPInput) (*models.IP, error) {
-	latlon, err := h.db.Lookup(i.IP)
+func (h handler) LocationForIP(ctx context.Context, ip string) (*models.IP, error) {
+	latlon, err := h.db.Lookup(ip)
 	if err == ErrIPMissing {
-		return nil, models.LocationForIP404Output{}
+		return nil, models.NotFound{Message: "Cannot locate IP"}
 	}
 	if err == ErrBadIP {
-		return nil, models.DefaultBadRequest{Msg: err.Error()}
+		return nil, models.BadRequest{Message: err.Error()}
 	}
 	if err != nil {
-		return nil, models.DefaultInternalError{Msg: err.Error()}
+		return nil, err
 	}
 	return &models.IP{
 		Lat: &latlon.Lat,

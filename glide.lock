@@ -1,6 +1,12 @@
-hash: 3995098c85773b4b340a671a76a661008441c6853802f53098299948637235fb
-updated: 2016-10-13T14:47:39.623759733-07:00
+hash: 62a56d2f008b932726484b2f8b16f4a05d854c02b9115ee4993f6d8a607d691d
+updated: 2016-11-09T12:24:17.332993058-08:00
 imports:
+- name: github.com/afex/hystrix-go
+  version: 39520ddd07a9d9a071d615f7476798659f5a3b89
+  subpackages:
+  - hystrix
+  - hystrix/metric_collector
+  - hystrix/rolling
 - name: github.com/asaskevich/govalidator
   version: 593d64559f7600f29581a3ee42177f5dbded27a9
 - name: github.com/Clever/discovery-go
@@ -9,6 +15,10 @@ imports:
   version: b7f30fc286d312e80ccc1d88086a283a0bce48c1
   subpackages:
   - metrics
+- name: github.com/donovanhide/eventsource
+  version: fd1de70867126402be23c306e1ce32828455d85b
+- name: github.com/go-errors/errors
+  version: a41850380601eeb43f4350f7d17c6bbd8944aaf8
 - name: github.com/go-openapi/analysis
   version: b44dc874b601d9e4e2f6e19140e794ba24bead3b
 - name: github.com/go-openapi/errors
@@ -64,12 +74,6 @@ imports:
   version: 8a290539e2e8629dbc4e6bad948158f790ec31f4
 - name: github.com/PuerkitoBio/urlesc
   version: 5bd2802263f21d8788851d5305584c82a5c75d7e
-- name: github.com/xeipuuv/gojsonpointer
-  version: e0fe6f68307607d540ed8eac07a342c33fa1b54a
-- name: github.com/xeipuuv/gojsonreference
-  version: e02fc20de94c78484cd5ffb007f8af96be030a45
-- name: github.com/xeipuuv/gojsonschema
-  version: 00f9fafb54d2244d291b86ab63d12c38bd5c3886
 - name: golang.org/x/net
   version: 9bc2a3340c92c17a20edcd0080e93851ed58f5d5
   subpackages:
@@ -94,19 +98,16 @@ imports:
   subpackages:
   - logger
 - name: gopkg.in/Clever/kayvee-go.v5
-  version: 2bf003d906c004c4578a41237c4fba3e1315daec
+  version: 865aa5e4bbe8e274c69accd53f0b1e2ecc484cd8
   subpackages:
   - logger
   - middleware
-  - router
 - name: gopkg.in/Clever/optimus.v3
   version: 723bfdc306c1dc9f96f8f30f4408818470139ebf
   subpackages:
   - sources/csv
 - name: gopkg.in/tylerb/graceful.v1
   version: 50a48b6e73fcc75b45e22c05b79629a67c79e938
-- name: gopkg.in/yaml.v2
-  version: a5b47d31c556af34a302ce5d659e6fea44d90de0
 testImports:
 - name: github.com/davecgh/go-spew
   version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9
