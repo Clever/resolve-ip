@@ -2,6 +2,11 @@ swagger: '2.0'
 info:
   title: resolve-ip
   description: service that takes in an IP address and converts it to a latitude and longitude
+  # when changing the version here, make sure to
+  # 1. re-run `make generate` to generate clients and server
+  # 2. commit the new clients, and tag the commit with the version:
+  #    git tag -a vX.Y.Z -m "vX.Y.Z"
+  #    git push origin --tags
   version: 2.1.0
   x-npm-package: resolve-ip
 schemes:
