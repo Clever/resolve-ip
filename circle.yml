@@ -16,12 +16,18 @@ test:
   - tar xvzf GeoLiteCity_20160301.tar.gz
   - make test
 deployment:
-  all:
-    branch: master
+  master:
     owner: Clever
     commands:
     - $HOME/ci-scripts/circleci/docker-publish $DOCKER_USER $DOCKER_PASS "$DOCKER_EMAIL" $DOCKER_ORG
     - $HOME/ci-scripts/circleci/catapult-publish $CATAPULT_URL $CATAPULT_USER $CATAPULT_PASS resolve-ip
     - $HOME/ci-scripts/circleci/npm-publish $NPM_TOKEN gen-js/
+    branch: master
+  non-master:
+    owner: Clever
+    commands:
+    - $HOME/ci-scripts/circleci/docker-publish $DOCKER_USER $DOCKER_PASS "$DOCKER_EMAIL" $DOCKER_ORG
+    - $HOME/ci-scripts/circleci/catapult-publish $CATAPULT_URL $CATAPULT_USER $CATAPULT_PASS resolve-ip
+    branch: /^(?!master$).*$/
 general:
   build_dir: ../.go_workspace/src/github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME
