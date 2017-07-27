@@ -13,11 +13,14 @@ import:
   subpackages:
   - gomock
 - package: github.com/gorilla/mux
-  version: ^1.1.0
+  version: 757bef944d0f21880861c2dd9c871ca543023cba
 - package: github.com/lightstep/lightstep-tracer-go
-  version: f3c66066ce6023ad1bd721cfbd9fbd6292eb08cc
+  version: 0d48cd619841b1e1a3cdd20cd6ac97774c0002ce
 - package: github.com/opentracing/opentracing-go
-  version: ^0.10.0
+  version: ^1.0.0
+- package: github.com/opentracing/basictracer-go
+  version: 1b32af207119a14b1b231d451df3ed04a72efebf
+- package: github.com/kardianos/osext
 - package: golang.org/x/net
   subpackages:
   - context/ctxhttp

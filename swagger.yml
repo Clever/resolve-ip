@@ -7,7 +7,7 @@ info:
   # 2. commit the new clients, and tag the commit with the version:
   #    git tag -a vX.Y.Z -m "vX.Y.Z"
   #    git push origin --tags
-  version: 2.1.0
+  version: 3.0.0
   x-npm-package: resolve-ip
 schemes:
   - http
