@@ -1,10 +1,12 @@
 package client
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"net"
@@ -15,8 +17,9 @@ import (
 	"github.com/afex/hystrix-go/hystrix"
 	"github.com/donovanhide/eventsource"
 	opentracing "github.com/opentracing/opentracing-go"
+	tags "github.com/opentracing/opentracing-go/ext"
 	"golang.org/x/net/context/ctxhttp"
-	logger "gopkg.in/Clever/kayvee-go.v5/logger"
+	logger "gopkg.in/Clever/kayvee-go.v6/logger"
 )
 
 // doer is an interface for "doing" http requests possibly with wrapping
@@ -49,6 +52,7 @@ func (d tracingDoer) Do(c *http.Client, r *http.Request) (*http.Response, error)
 	} else {
 		sp = opentracing.StartSpan(opName)
 	}
+	tags.SpanKind.Set(sp, tags.SpanKindRPCClientEnum)
 	if err := sp.Tracer().Inject(sp.Context(),
 		opentracing.HTTPHeaders,
 		opentracing.HTTPHeadersCarrier(r.Header)); err != nil {
@@ -146,7 +150,24 @@ func (d *retryDoer) Do(c *http.Client, r *http.Request) (*http.Response, error) 
 	backoffs := retryPolicy.Backoffs()
 	var resp *http.Response
 	var err error
+
+	// Save the request body in case we have to retry. Otherwise we will have already read
+	// the buffer on retry and the request will fail. See
+	// http://stackoverflow.com/questions/23070876/reading-body-of-http-request-without-modifying-request-state
+	var buf []byte
+	if r.Body != nil {
+		var err error
+		buf, err = ioutil.ReadAll(r.Body)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	for retries := 0; true; retries++ {
+		if r.Body != nil {
+			rdr := ioutil.NopCloser(bytes.NewBuffer(buf))
+			r.Body = rdr
+		}
 		resp, err = d.d.Do(c, r)
 		if retries == len(backoffs) || !retryPolicy.Retry(r, resp, err) {
 			break
@@ -165,6 +186,7 @@ type circuitBreakerDoer struct {
 	d           doer
 	debug       bool
 	circuitName string
+	logger      logger.KayveeLogger
 }
 
 var circuitSSEOnce sync.Once
@@ -189,7 +211,7 @@ type HystrixSSEEvent struct {
 	LatencyTotalMean                int    `json:"latencyTotal_mean"`
 }
 
-func logEvent(l *logger.Logger, e HystrixSSEEvent) {
+func logEvent(l logger.KayveeLogger, e HystrixSSEEvent) {
 	l.InfoD(e.Name, map[string]interface{}{
 		"requestCount":                    e.RequestCount,
 		"errorCount":                      e.ErrorCount,
@@ -222,9 +244,9 @@ func (d *circuitBreakerDoer) init() {
 		if err != nil {
 			panic(err)
 		}
+
 		go http.Serve(listener, hystrixStreamHandler)
 		go func() {
-			logger := logger.New("wag")
 			logFrequency := 30 * time.Second
 			lastEventSeen := map[string]HystrixSSEEvent{}
 			lastEventLogTime := map[string]time.Time{}
@@ -258,15 +280,15 @@ func (d *circuitBreakerDoer) init() {
 					// (3) 30 seconds have passed since we logged something for the circuit
 					if !ok {
 						lastEventLogTime[e.Name] = time.Now()
-						logEvent(logger, e)
+						logEvent(d.logger, e)
 						continue
 					}
 					if lastSeen.IsCircuitBreakerOpen != e.IsCircuitBreakerOpen {
 						lastEventLogTime[e.Name] = time.Now()
-						logEvent(logger, e)
+						logEvent(d.logger, e)
 					} else if time.Now().Sub(lastEventLogTime[e.Name]) > logFrequency {
 						lastEventLogTime[e.Name] = time.Now()
-						logEvent(logger, e)
+						logEvent(d.logger, e)
 					}
 				}
 			}

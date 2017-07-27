@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -15,6 +14,7 @@ import (
 	discovery "github.com/Clever/discovery-go"
 	"github.com/Clever/resolve-ip/gen-go/models"
 	"github.com/afex/hystrix-go/hystrix"
+	logger "gopkg.in/Clever/kayvee-go.v6/logger"
 )
 
 var _ = json.Marshal
@@ -33,6 +33,7 @@ type WagClient struct {
 	// Keep the circuit doer around so that we can turn it on / off
 	circuitDoer    *circuitBreakerDoer
 	defaultTimeout time.Duration
+	logger         logger.KayveeLogger
 }
 
 var _ Client = (*WagClient)(nil)
@@ -44,15 +45,24 @@ func New(basePath string) *WagClient {
 	// For the short-term don't use the default retry policy since its 5 retries can 5X
 	// the traffic. Once we've enabled circuit breakers by default we can turn it on.
 	retry := retryDoer{d: tracing, retryPolicy: SingleRetryPolicy{}}
+	logger := logger.New("resolve-ip-wagclient")
 	circuit := &circuitBreakerDoer{
 		d:     &retry,
 		debug: true,
 		// one circuit for each service + url pair
 		circuitName: fmt.Sprintf("resolve-ip-%s", shortHash(basePath)),
+		logger:      logger,
 	}
 	circuit.init()
-	client := &WagClient{requestDoer: circuit, retryDoer: &retry, circuitDoer: circuit, defaultTimeout: 10 * time.Second,
-		transport: &http.Transport{}, basePath: basePath}
+	client := &WagClient{
+		requestDoer:    circuit,
+		retryDoer:      &retry,
+		circuitDoer:    circuit,
+		defaultTimeout: 10 * time.Second,
+		transport:      &http.Transport{},
+		basePath:       basePath,
+		logger:         logger,
+	}
 	client.SetCircuitBreakerSettings(DefaultCircuitBreakerSettings)
 	return client
 }
@@ -78,6 +88,12 @@ func (c *WagClient) SetRetryPolicy(retryPolicy RetryPolicy) {
 // SetCircuitBreakerDebug puts the circuit
 func (c *WagClient) SetCircuitBreakerDebug(b bool) {
 	c.circuitDoer.debug = b
+}
+
+// SetLogger allows for setting a custom logger
+func (c *WagClient) SetLogger(logger logger.KayveeLogger) {
+	c.logger = logger
+	c.circuitDoer.logger = logger
 }
 
 // CircuitBreakerSettings are the parameters that govern the client's circuit breaker.
@@ -132,17 +148,25 @@ func (c *WagClient) SetTimeout(timeout time.Duration) {
 // 500: *models.InternalError
 // default: client side HTTP errors, for example: context.DeadlineExceeded.
 func (c *WagClient) HealthCheck(ctx context.Context) error {
-	path := c.basePath + "/healthcheck"
-	urlVals := url.Values{}
+	headers := make(map[string]string)
+
 	var body []byte
+	path := c.basePath + "/healthcheck"
 
-	path = path + "?" + urlVals.Encode()
-
-	client := &http.Client{Transport: c.transport}
 	req, err := http.NewRequest("GET", path, bytes.NewBuffer(body))
 
 	if err != nil {
 		return err
+	}
+
+	return c.doHealthCheckRequest(ctx, req, headers)
+}
+
+func (c *WagClient) doHealthCheckRequest(ctx context.Context, req *http.Request, headers map[string]string) error {
+	client := &http.Client{Transport: c.transport}
+
+	for field, value := range headers {
+		req.Header.Set(field, value)
 	}
 
 	// Add the opname for doers like tracing
@@ -157,11 +181,27 @@ func (c *WagClient) HealthCheck(ctx context.Context) error {
 		req = req.WithContext(ctx)
 	}
 	resp, err := c.requestDoer.Do(client, req)
-
-	if err != nil {
-		return err
+	retCode := 0
+	if resp != nil {
+		retCode = resp.StatusCode
 	}
 
+	// log all client failures and non-successful HT
+	logData := logger.M{
+		"backend":     "resolve-ip",
+		"method":      req.Method,
+		"uri":         req.URL,
+		"status_code": retCode,
+	}
+	if err == nil && retCode > 399 {
+		logData["message"] = resp.Status
+		c.logger.ErrorD("client-request-finished", logData)
+	}
+	if err != nil {
+		logData["message"] = err.Error()
+		c.logger.ErrorD("client-request-finished", logData)
+		return err
+	}
 	defer resp.Body.Close()
 	switch resp.StatusCode {
 
@@ -198,18 +238,31 @@ func (c *WagClient) HealthCheck(ctx context.Context) error {
 // 500: *models.InternalError
 // default: client side HTTP errors, for example: context.DeadlineExceeded.
 func (c *WagClient) LocationForIP(ctx context.Context, ip string) (*models.IP, error) {
-	path := c.basePath + "/ip/{ip}"
-	urlVals := url.Values{}
+	headers := make(map[string]string)
+
 	var body []byte
+	path, err := models.LocationForIPInputPath(ip)
 
-	path = strings.Replace(path, "{ip}", ip, -1)
-	path = path + "?" + urlVals.Encode()
+	if err != nil {
+		return nil, err
+	}
 
-	client := &http.Client{Transport: c.transport}
+	path = c.basePath + path
+
 	req, err := http.NewRequest("GET", path, bytes.NewBuffer(body))
 
 	if err != nil {
 		return nil, err
+	}
+
+	return c.doLocationForIPRequest(ctx, req, headers)
+}
+
+func (c *WagClient) doLocationForIPRequest(ctx context.Context, req *http.Request, headers map[string]string) (*models.IP, error) {
+	client := &http.Client{Transport: c.transport}
+
+	for field, value := range headers {
+		req.Header.Set(field, value)
 	}
 
 	// Add the opname for doers like tracing
@@ -224,11 +277,27 @@ func (c *WagClient) LocationForIP(ctx context.Context, ip string) (*models.IP, e
 		req = req.WithContext(ctx)
 	}
 	resp, err := c.requestDoer.Do(client, req)
-
-	if err != nil {
-		return nil, err
+	retCode := 0
+	if resp != nil {
+		retCode = resp.StatusCode
 	}
 
+	// log all client failures and non-successful HT
+	logData := logger.M{
+		"backend":     "resolve-ip",
+		"method":      req.Method,
+		"uri":         req.URL,
+		"status_code": retCode,
+	}
+	if err == nil && retCode > 399 {
+		logData["message"] = resp.Status
+		c.logger.ErrorD("client-request-finished", logData)
+	}
+	if err != nil {
+		logData["message"] = err.Error()
+		c.logger.ErrorD("client-request-finished", logData)
+		return nil, err
+	}
 	defer resp.Body.Close()
 	switch resp.StatusCode {
 
@@ -238,6 +307,7 @@ func (c *WagClient) LocationForIP(ctx context.Context, ip string) (*models.IP, e
 		if err := json.NewDecoder(resp.Body).Decode(&output); err != nil {
 			return nil, err
 		}
+
 		return &output, nil
 
 	case 400:
