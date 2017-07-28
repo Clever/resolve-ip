@@ -1,5 +1,5 @@
-include wag.mk
 include golang.mk
+include wag.mk
 
 WAG_VERSION := latest
 

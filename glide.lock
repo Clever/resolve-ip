@@ -1,5 +1,5 @@
-hash: 62a56d2f008b932726484b2f8b16f4a05d854c02b9115ee4993f6d8a607d691d
-updated: 2016-11-09T12:24:17.332993058-08:00
+hash: 7619d73b9598316c9312aa947294615b18c55f0459a51a1d593770360c9c5b08
+updated: 2017-07-27T22:53:59.522244798Z
 imports:
 - name: github.com/afex/hystrix-go
   version: 39520ddd07a9d9a071d615f7476798659f5a3b89
@@ -10,7 +10,7 @@ imports:
 - name: github.com/asaskevich/govalidator
   version: 593d64559f7600f29581a3ee42177f5dbded27a9
 - name: github.com/Clever/discovery-go
-  version: fd78b9ff3291bf5e69038a9b2da73e91ca0e49c7
+  version: b2114f3bdf1c55f030cf6d6d457478ccb18b9e9c
 - name: github.com/Clever/go-process-metrics
   version: b7f30fc286d312e80ccc1d88086a283a0bce48c1
   subpackages:
@@ -47,15 +47,24 @@ imports:
   version: bd3c8e81be01eef76d4b503f5e687d2d1354d2d9
   subpackages:
   - gomock
+- name: github.com/golang/protobuf
+  version: 3852dcfda249c2097355a6aabb199a28d97b30df
+  subpackages:
+  - proto
+  - ptypes/timestamp
 - name: github.com/gorilla/context
   version: aed02d124ae4a0e94fea4541c8effd05bf0c8296
 - name: github.com/gorilla/mux
-  version: 0eeaf8392f5b04950925b8a69fe70f110fa7cbfc
+  version: 757bef944d0f21880861c2dd9c871ca543023cba
+- name: github.com/kardianos/osext
+  version: 9d302b58e975387d0b4d9be876622c86cefe64be
 - name: github.com/lightstep/lightstep-tracer-go
-  version: f3c66066ce6023ad1bd721cfbd9fbd6292eb08cc
+  version: 0d48cd619841b1e1a3cdd20cd6ac97774c0002ce
   subpackages:
+  - collectorpb
   - lightstep_thrift
   - thrift_0_9_2/lib/go/thrift
+  - thrift_rpc
 - name: github.com/mailru/easyjson
   version: 34560e358dc05e2c28f6fda2f5c9e7494a4b9b19
   subpackages:
@@ -63,23 +72,35 @@ imports:
   - jlexer
   - jwriter
 - name: github.com/opentracing/basictracer-go
-  version: c7c0202a8a77f658aeb2193a27b6c0cfcc821038
+  version: 1b32af207119a14b1b231d451df3ed04a72efebf
   subpackages:
   - wire
 - name: github.com/opentracing/opentracing-go
-  version: ca4c9c0010bd9155b6d067b33865d849fe533628
+  version: 1949ddbfd147afd4d964a9f00b24eb291e0e7c38
   subpackages:
   - ext
+  - log
 - name: github.com/PuerkitoBio/purell
   version: 8a290539e2e8629dbc4e6bad948158f790ec31f4
 - name: github.com/PuerkitoBio/urlesc
   version: 5bd2802263f21d8788851d5305584c82a5c75d7e
+- name: github.com/xeipuuv/gojsonpointer
+  version: 6fe8760cad3569743d51ddbb243b26f8456742dc
+- name: github.com/xeipuuv/gojsonreference
+  version: e02fc20de94c78484cd5ffb007f8af96be030a45
+- name: github.com/xeipuuv/gojsonschema
+  version: 702b404897d4364af44dc8dcabc9815947942325
 - name: golang.org/x/net
   version: 9bc2a3340c92c17a20edcd0080e93851ed58f5d5
   subpackages:
   - context
   - context/ctxhttp
+  - http2
+  - http2/hpack
   - idna
+  - internal/timeseries
+  - lex/httplex
+  - trace
 - name: golang.org/x/text
   version: 2910a502d2bf9e43193af9d68ca516529614eed3
   subpackages:
@@ -93,6 +114,19 @@ imports:
   - unicode/bidi
   - unicode/norm
   - width
+- name: google.golang.org/grpc
+  version: c8105071640ef29fce843ed96983e864bb18eb0e
+  subpackages:
+  - codes
+  - credentials
+  - grpclog
+  - internal
+  - metadata
+  - naming
+  - peer
+  - stats
+  - tap
+  - transport
 - name: gopkg.in/Clever/kayvee-go.v3
   version: 056c92dcc68b40c5d6045f755197b3776f914154
   subpackages:
@@ -102,12 +136,19 @@ imports:
   subpackages:
   - logger
   - middleware
+- name: gopkg.in/Clever/kayvee-go.v6
+  version: 096364e316a52652d3493be702d8105d8d01db84
+  subpackages:
+  - logger
+  - router
 - name: gopkg.in/Clever/optimus.v3
-  version: 723bfdc306c1dc9f96f8f30f4408818470139ebf
+  version: e4810ba9d12db3a27c8f5b420aa291cf2f100b8e
   subpackages:
   - sources/csv
 - name: gopkg.in/tylerb/graceful.v1
-  version: 50a48b6e73fcc75b45e22c05b79629a67c79e938
+  version: 4654dfbb6ad53cb5e27f37d99b02e16c1872fbbb
+- name: gopkg.in/yaml.v2
+  version: 49c95bdc21843256fb6c4e0d370a05f24a0bf213
 testImports:
 - name: github.com/davecgh/go-spew
   version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9

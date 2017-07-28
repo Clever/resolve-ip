@@ -11,7 +11,7 @@ import (
 // Controller defines the interface for the resolve-ip service.
 type Controller interface {
 
-	// HealthCheck makes a GET request to /healthcheck
+	// HealthCheck handles GET requests to /healthcheck
 	// Checks if the service is healthy
 	// 200: nil
 	// 400: *models.BadRequest
@@ -19,7 +19,7 @@ type Controller interface {
 	// default: client side HTTP errors, for example: context.DeadlineExceeded.
 	HealthCheck(ctx context.Context) error
 
-	// LocationForIP makes a GET request to /ip/{ip}
+	// LocationForIP handles GET requests to /ip/{ip}
 	// Gets the lat/lon for a given IP.
 	// 200: *models.IP
 	// 400: *models.BadRequest

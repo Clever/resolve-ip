@@ -1,6 +1,10 @@
-const discovery = require("@clever/discovery");
+const async = require("async");
+const discovery = require("clever-discovery");
+const kayvee = require("kayvee");
 const request = require("request");
 const opentracing = require("opentracing");
+const {commandFactory} = require("hystrixjs");
+const RollingNumberEvent = require("hystrixjs/lib/metrics/RollingNumberEvent");
 
 /**
  * @external Span
@@ -52,7 +56,7 @@ const singleRetryPolicy = {
     return true;
   },
 };
- 
+
 /**
  * Use this retry policy to turn off retries.
  * @alias module:resolve-ip.RetryPolicies.None
@@ -64,6 +68,43 @@ const noRetryPolicy = {
   retry() {
     return false;
   },
+};
+
+/**
+ * Request status log is used to
+ * to output the status of a request returned
+ * by the client.
+ */
+function responseLog(logger, req, res, err) {
+  var res = res || { };
+  var req = req || { };
+  var logData = {
+	"backend": "resolve-ip",
+	"method": req.method || "",
+	"uri": req.uri || "",
+    "message": err || (res.statusMessage || ""),
+    "status_code": res.statusCode || 0,
+  };
+
+  if (err) {
+    logger.errorD("client-request-finished", logData);
+  } else {
+    logger.infoD("client-request-finished", logData);
+  }
+}
+
+/**
+ * Default circuit breaker options.
+ * @alias module:resolve-ip.DefaultCircuitOptions
+ */
+const defaultCircuitOptions = {
+  forceClosed:            true,
+  requestVolumeThreshold: 20,
+  maxConcurrentRequests:  100,
+  requestVolumeThreshold: 20,
+  sleepWindow:            5000,
+  errorPercentThreshold:  90,
+  logIntervalMs:          30000
 };
 
 /**
@@ -83,12 +124,25 @@ class ResolveIP {
    * @param {Object} options - Options for constructing a client object.
    * @param {string} [options.address] - URL where the server is located. Must provide
    * this or the discovery argument
-   * @param {bool} [options.discovery] - Use @clever/discovery to locate the server. Must provide
+   * @param {bool} [options.discovery] - Use clever-discovery to locate the server. Must provide
    * this or the address argument
    * @param {number} [options.timeout] - The timeout to use for all client requests,
    * in milliseconds. This can be overridden on a per-request basis.
    * @param {module:resolve-ip.RetryPolicies} [options.retryPolicy=RetryPolicies.Single] - The logic to
    * determine which requests to retry, as well as how many times to retry.
+   * @param {module:kayvee.Logger} [options.logger=logger.New("resolve-ip-wagclient")] - The Kayvee 
+   * logger to use in the client.
+   * @param {Object} [options.circuit] - Options for constructing the client's circuit breaker.
+   * @param {bool} [options.circuit.forceClosed] - When set to true the circuit will always be closed. Default: true.
+   * @param {number} [options.circuit.maxConcurrentRequests] - the maximum number of concurrent requests
+   * the client can make at the same time. Default: 100.
+   * @param {number} [options.circuit.requestVolumeThreshold] - The minimum number of requests needed
+   * before a circuit can be tripped due to health. Default: 20.
+   * @param {number} [options.circuit.sleepWindow] - how long, in milliseconds, to wait after a circuit opens
+   * before testing for recovery. Default: 5000.
+   * @param {number} [options.circuit.errorPercentThreshold] - the threshold to place on the rolling error
+   * rate. Once the error rate exceeds this percentage, the circuit opens.
+   * Default: 90.
    */
   constructor(options) {
     options = options || {};
@@ -110,6 +164,59 @@ class ResolveIP {
     if (options.retryPolicy) {
       this.retryPolicy = options.retryPolicy;
     }
+    if (options.logger) {
+      this.logger = options.logger;
+    } else {
+      this.logger =  new kayvee.logger("resolve-ip-wagclient");
+    }
+
+    const circuitOptions = Object.assign({}, defaultCircuitOptions, options.circuit);
+    this._hystrixCommand = commandFactory.getOrCreate("resolve-ip").
+      errorHandler(this._hystrixCommandErrorHandler).
+      circuitBreakerForceClosed(circuitOptions.forceClosed).
+      requestVolumeRejectionThreshold(circuitOptions.maxConcurrentRequests).
+      circuitBreakerRequestVolumeThreshold(circuitOptions.requestVolumeThreshold).
+      circuitBreakerSleepWindowInMilliseconds(circuitOptions.sleepWindow).
+      circuitBreakerErrorThresholdPercentage(circuitOptions.errorPercentThreshold).
+      timeout(0).
+      statisticalWindowLength(10000).
+      statisticalWindowNumberOfBuckets(10).
+      run(this._hystrixCommandRun).
+      context(this).
+      build();
+
+    setInterval(() => this._logCircuitState(), circuitOptions.logIntervalMs);
+  }
+
+  _hystrixCommandErrorHandler(err) {
+    // to avoid counting 4XXs as errors, only count an error if it comes from the request library
+    if (err._fromRequest === true) {
+      return err;
+    }
+    return false;
+  }
+
+  _hystrixCommandRun(method, args) {
+    return method.apply(this, args);
+  }
+
+  _logCircuitState(logger) {
+    // code below heavily borrows from hystrix's internal HystrixSSEStream.js logic
+    const metrics = this._hystrixCommand.metrics;
+    const healthCounts = metrics.getHealthCounts()
+    const circuitBreaker = this._hystrixCommand.circuitBreaker;
+    this.logger.infoD("resolve-ip", {
+      "requestCount":                    healthCounts.totalCount,
+      "errorCount":                      healthCounts.errorCount,
+      "errorPercentage":                 healthCounts.errorPercentage,
+      "isCircuitBreakerOpen":            circuitBreaker.isOpen(),
+      "rollingCountFailure":             metrics.getRollingCount(RollingNumberEvent.FAILURE),
+      "rollingCountShortCircuited":      metrics.getRollingCount(RollingNumberEvent.SHORT_CIRCUITED),
+      "rollingCountSuccess":             metrics.getRollingCount(RollingNumberEvent.SUCCESS),
+      "rollingCountTimeout":             metrics.getRollingCount(RollingNumberEvent.TIMEOUT),
+      "currentConcurrentExecutionCount": metrics.getCurrentExecutionCount(),
+      "latencyTotalMean":                metrics.getExecutionTime("mean") || 0,
+    });
   }
 
   /**
@@ -126,38 +233,15 @@ class ResolveIP {
    * @reject {Error}
    */
   healthCheck(options, cb) {
+    return this._hystrixCommand.execute(this._healthCheck, arguments);
+  }
+  _healthCheck(options, cb) {
     const params = {};
 
     if (!cb && typeof options === "function") {
       cb = options;
       options = undefined;
     }
-
-    if (!options) {
-      options = {};
-    }
-
-    const timeout = options.timeout || this.timeout;
-    const span = options.span;
-
-    const headers = {};
-
-    const query = {};
-
-    if (span) {
-      opentracing.inject(span, opentracing.FORMAT_TEXT_MAP, headers);
-      span.logEvent("GET /healthcheck");
-    }
-
-    const requestOptions = {
-      method: "GET",
-      uri: this.address + "/healthcheck",
-      json: true,
-      timeout,
-      headers,
-      qs: query,
-      useQuerystring: true,
-    };
 
     return new Promise((resolve, reject) => {
       const rejecter = (err) => {
@@ -173,8 +257,39 @@ class ResolveIP {
         }
       };
 
+
+      if (!options) {
+        options = {};
+      }
+
+      const timeout = options.timeout || this.timeout;
+      const span = options.span;
+
+      const headers = {};
+
+      const query = {};
+
+      if (span) {
+        opentracing.inject(span, opentracing.FORMAT_TEXT_MAP, headers);
+        span.logEvent("GET /healthcheck");
+        span.setTag("span.kind", "client");
+      }
+
+      const requestOptions = {
+        method: "GET",
+        uri: this.address + "/healthcheck",
+        json: true,
+        timeout,
+        headers,
+        qs: query,
+        useQuerystring: true,
+      };
+  
+
       const retryPolicy = options.retryPolicy || this.retryPolicy || singleRetryPolicy;
       const backoffs = retryPolicy.backoffs();
+      const logger = this.logger;
+  
       let retries = 0;
       (function requestOnce() {
         request(requestOptions, (err, response, body) => {
@@ -185,23 +300,35 @@ class ResolveIP {
             return;
           }
           if (err) {
+            err._fromRequest = true;
+            responseLog(logger, requestOptions, response, err)
             rejecter(err);
             return;
           }
+
           switch (response.statusCode) {
             case 200:
               resolver();
               break;
+            
             case 400:
-              rejecter(new Errors.BadRequest(body || {}));
-              break;
+              var err = new Errors.BadRequest(body || {});
+              responseLog(logger, requestOptions, response, err);
+              rejecter(err);
+              return;
+            
             case 500:
-              rejecter(new Errors.InternalError(body || {}));
-              break;
+              var err = new Errors.InternalError(body || {});
+              responseLog(logger, requestOptions, response, err);
+              rejecter(err);
+              return;
+            
             default:
-              rejecter(new Error("Recieved unexpected statusCode " + response.statusCode));
+              var err = new Error("Received unexpected statusCode " + response.statusCode);
+              responseLog(logger, requestOptions, response, err);
+              rejecter(err);
+              return;
           }
-          return;
         });
       }());
     });
@@ -223,6 +350,9 @@ class ResolveIP {
    * @reject {Error}
    */
   locationForIP(ip, options, cb) {
+    return this._hystrixCommand.execute(this._locationForIP, arguments);
+  }
+  _locationForIP(ip, options, cb) {
     const params = {};
     params["ip"] = ip;
 
@@ -230,32 +360,6 @@ class ResolveIP {
       cb = options;
       options = undefined;
     }
-
-    if (!options) {
-      options = {};
-    }
-
-    const timeout = options.timeout || this.timeout;
-    const span = options.span;
-
-    const headers = {};
-
-    const query = {};
-
-    if (span) {
-      opentracing.inject(span, opentracing.FORMAT_TEXT_MAP, headers);
-      span.logEvent("GET /ip/{ip}");
-    }
-
-    const requestOptions = {
-      method: "GET",
-      uri: this.address + "/ip/" + params.ip + "",
-      json: true,
-      timeout,
-      headers,
-      qs: query,
-      useQuerystring: true,
-    };
 
     return new Promise((resolve, reject) => {
       const rejecter = (err) => {
@@ -271,8 +375,43 @@ class ResolveIP {
         }
       };
 
+
+      if (!options) {
+        options = {};
+      }
+
+      const timeout = options.timeout || this.timeout;
+      const span = options.span;
+
+      const headers = {};
+      if (!params.ip) {
+        rejecter(new Error("ip must be non-empty because it's a path parameter"));
+        return;
+      }
+
+      const query = {};
+
+      if (span) {
+        opentracing.inject(span, opentracing.FORMAT_TEXT_MAP, headers);
+        span.logEvent("GET /ip/{ip}");
+        span.setTag("span.kind", "client");
+      }
+
+      const requestOptions = {
+        method: "GET",
+        uri: this.address + "/ip/" + params.ip + "",
+        json: true,
+        timeout,
+        headers,
+        qs: query,
+        useQuerystring: true,
+      };
+  
+
       const retryPolicy = options.retryPolicy || this.retryPolicy || singleRetryPolicy;
       const backoffs = retryPolicy.backoffs();
+      const logger = this.logger;
+  
       let retries = 0;
       (function requestOnce() {
         request(requestOptions, (err, response, body) => {
@@ -283,26 +422,41 @@ class ResolveIP {
             return;
           }
           if (err) {
+            err._fromRequest = true;
+            responseLog(logger, requestOptions, response, err)
             rejecter(err);
             return;
           }
+
           switch (response.statusCode) {
             case 200:
               resolver(body);
               break;
+            
             case 400:
-              rejecter(new Errors.BadRequest(body || {}));
-              break;
+              var err = new Errors.BadRequest(body || {});
+              responseLog(logger, requestOptions, response, err);
+              rejecter(err);
+              return;
+            
             case 404:
-              rejecter(new Errors.NotFound(body || {}));
-              break;
+              var err = new Errors.NotFound(body || {});
+              responseLog(logger, requestOptions, response, err);
+              rejecter(err);
+              return;
+            
             case 500:
-              rejecter(new Errors.InternalError(body || {}));
-              break;
+              var err = new Errors.InternalError(body || {});
+              responseLog(logger, requestOptions, response, err);
+              rejecter(err);
+              return;
+            
             default:
-              rejecter(new Error("Recieved unexpected statusCode " + response.statusCode));
+              var err = new Error("Received unexpected statusCode " + response.statusCode);
+              responseLog(logger, requestOptions, response, err);
+              rejecter(err);
+              return;
           }
-          return;
         });
       }());
     });
@@ -326,3 +480,5 @@ module.exports.RetryPolicies = {
  * @alias module:resolve-ip.Errors
  */
 module.exports.Errors = Errors;
+
+module.exports.DefaultCircuitOptions = defaultCircuitOptions;

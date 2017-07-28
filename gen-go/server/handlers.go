@@ -13,7 +13,7 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
 	"github.com/gorilla/mux"
-	"gopkg.in/Clever/kayvee-go.v5/logger"
+	"gopkg.in/Clever/kayvee-go.v6/logger"
 )
 
 var _ = strconv.ParseInt
@@ -58,7 +58,7 @@ func convertDate(input string) (strfmt.Date, error) {
 }
 
 func jsonMarshalNoError(i interface{}) string {
-	bytes, err := json.Marshal(i)
+	bytes, err := json.MarshalIndent(i, "", "\t")
 	if err != nil {
 		// This should never happen
 		return ""
@@ -160,7 +160,6 @@ func statusCodeForLocationForIP(obj interface{}) int {
 func (h handler) LocationForIPHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 
 	ip, err := newLocationForIPInput(r)
-
 	if err != nil {
 		logger.FromContext(ctx).AddContext("error", err.Error())
 		http.Error(w, jsonMarshalNoError(models.BadRequest{Message: err.Error()}), http.StatusBadRequest)
@@ -191,7 +190,7 @@ func (h handler) LocationForIPHandler(ctx context.Context, w http.ResponseWriter
 		return
 	}
 
-	respBytes, err := json.Marshal(resp)
+	respBytes, err := json.MarshalIndent(resp, "", "\t")
 	if err != nil {
 		logger.FromContext(ctx).AddContext("error", err.Error())
 		http.Error(w, jsonMarshalNoError(models.InternalError{Message: err.Error()}), http.StatusInternalServerError)
