@@ -13,4 +13,4 @@ expose:
 - name: pprof
   port: 6060
   bind: 6060
-team: eng-classrooms
+team: eng-instant-login
