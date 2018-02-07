@@ -19,10 +19,10 @@ $(PKGS): golang-test-all-strict-deps
 	$(call golang-test-all-strict,$@)
 
 build:
-	CGO_ENABLED=0 go build -installsuffix cgo -o build/$(EXECUTABLE) $(PKG)
+	$(call golang-build,$(PKG),$(EXECUTABLE))
 
 run: build
-	build/$(EXECUTABLE)
+	bin/$(EXECUTABLE)
 
 generate: wag-generate-deps
 	$(call wag-generate,./swagger.yml,$(PKG))
