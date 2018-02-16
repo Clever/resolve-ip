@@ -13,12 +13,6 @@
   revision = "b7f30fc286d312e80ccc1d88086a283a0bce48c1"
 
 [[projects]]
-  name = "github.com/Clever/resolve-ip"
-  packages = ["gen-go/models","gen-go/server"]
-  revision = "17322b30acdb6f75da33f64b2d265e4bf9560c55"
-  version = "v3.0.0"
-
-[[projects]]
   name = "github.com/PuerkitoBio/purell"
   packages = ["."]
   revision = "8a290539e2e8629dbc4e6bad948158f790ec31f4"
@@ -237,6 +231,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "0d66cefc28e3fa6e9f69bcdc9439e7221cb98abf7ce3497f65e589a0194c69d7"
+  inputs-digest = "b5b615e8b4a96f60f777b5e46f534cab8d5859005669846a5af535b68ff700f7"
   solver-name = "gps-cdcl"
   solver-version = 1
