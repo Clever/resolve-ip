@@ -25,13 +25,6 @@ jobs:
           curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
           sudo apt-get install -y nodejs
         name: Install node for npm publish
-    - run:
-        command: |-
-          cd /tmp/ && wget https://bootstrap.pypa.io/get-pip.py && sudo python get-pip.py
-          sudo apt-get install python-dev
-          sudo pip install --upgrade awscli && aws --version
-          pip install --upgrade --user awscli
-        name: Install awscli for ECR publish
     - run: $HOME/ci-scripts/circleci/docker-publish $DOCKER_USER $DOCKER_PASS "$DOCKER_EMAIL" $DOCKER_ORG
     - run: $HOME/ci-scripts/circleci/catapult-publish $CATAPULT_URL $CATAPULT_USER $CATAPULT_PASS resolve-ip
     - run: if [ "${CIRCLE_BRANCH}" == "master" ]; then $HOME/ci-scripts/circleci/npm-publish $NPM_TOKEN gen-js/; fi;
