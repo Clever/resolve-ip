@@ -10,8 +10,5 @@ expose:
   health_check:
     type: http
     path: /healthcheck
-- name: pprof
-  port: 6060
-  bind: 6060
 team: eng-instant-login
 databases: []
