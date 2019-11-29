@@ -12,3 +12,23 @@ expose:
     path: /healthcheck
 team: eng-instant-login
 databases: []
+alarms:
+- type: InternalErrorAlarm
+  team: eng-instant-login
+  severity: major
+  channel: '#instant-login-alerts'
+  parameters:
+    threshold: 0.01
+    evaluationPeriods: 2
+  extraParameters:
+    requestMinimum: 100
+- type: InternalErrorAlarm
+  team: eng-instant-login
+  severity: critical
+  channel: '#oncall-instant-login'
+  parameters:
+    threshold: 0.05
+    evaluationPeriods: 2
+    lifevest: true
+  extraParameters:
+    requestMinimum: 100
