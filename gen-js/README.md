@@ -1,21 +1,3 @@
-## Modules
-
-<dl>
-<dt><a href="#module_resolve-ip">resolve-ip</a></dt>
-<dd><p>resolve-ip client library.</p>
-</dd>
-</dl>
-
-## Functions
-
-<dl>
-<dt><a href="#responseLog">responseLog()</a></dt>
-<dd><p>Request status log is used to
-to output the status of a request returned
-by the client.</p>
-</dd>
-</dl>
-
 <a name="module_resolve-ip"></a>
 
 ## resolve-ip
@@ -56,9 +38,10 @@ Create a new client object.
 | options | <code>Object</code> |  | Options for constructing a client object. |
 | [options.address] | <code>string</code> |  | URL where the server is located. Must provide this or the discovery argument |
 | [options.discovery] | <code>bool</code> |  | Use clever-discovery to locate the server. Must provide this or the address argument |
-| [options.timeout] | <code>number</code> |  | The timeout to use for all client requests, in milliseconds. This can be overridden on a per-request basis. |
+| [options.timeout] | <code>number</code> |  | The timeout to use for all client requests, in milliseconds. This can be overridden on a per-request basis. Default is 5000ms. |
+| [options.keepalive] | <code>bool</code> |  | Set keepalive to true for client requests. This sets the forever: true attribute in request. Defaults to true. |
 | [options.retryPolicy] | <code>[RetryPolicies](#module_resolve-ip--ResolveIP.RetryPolicies)</code> | <code>RetryPolicies.Single</code> | The logic to determine which requests to retry, as well as how many times to retry. |
-| [options.logger] | <code>module:kayvee.Logger</code> | <code>logger.New(&quot;resolve-ip-wagclient&quot;)</code> | The Kayvee  logger to use in the client. |
+| [options.logger] | <code>module:kayvee.Logger</code> | <code>logger.New(&quot;resolve-ip-wagclient&quot;)</code> | The Kayvee logger to use in the client. |
 | [options.circuit] | <code>Object</code> |  | Options for constructing the client's circuit breaker. |
 | [options.circuit.forceClosed] | <code>bool</code> |  | When set to true the circuit will always be closed. Default: true. |
 | [options.circuit.maxConcurrentRequests] | <code>number</code> |  | the maximum number of concurrent requests the client can make at the same time. Default: 100. |
@@ -193,11 +176,3 @@ NotFound
 Default circuit breaker options.
 
 **Kind**: static constant of <code>[ResolveIP](#exp_module_resolve-ip--ResolveIP)</code>  
-<a name="responseLog"></a>
-
-## responseLog()
-Request status log is used to
-to output the status of a request returned
-by the client.
-
-**Kind**: global function  

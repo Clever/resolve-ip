@@ -8,6 +8,7 @@ import (
 
 	opentracing "github.com/opentracing/opentracing-go"
 	tags "github.com/opentracing/opentracing-go/ext"
+	opentracinglog "github.com/opentracing/opentracing-go/log"
 	"gopkg.in/Clever/kayvee-go.v6/logger"
 )
 
@@ -64,7 +65,7 @@ func WithTracingOpName(ctx context.Context, opName string) context.Context {
 	return ctx
 }
 
-// Tracing creates a new span named after the URL path of the request.
+// TracingMiddleware creates a new span named after the URL path of the request.
 // It places this span in the request context, for use by other handlers via opentracing.SpanFromContext()
 // If a span exists in request headers, the span created by this middleware will be a child of that span.
 func TracingMiddleware(h http.Handler) http.Handler {
@@ -109,6 +110,7 @@ func TracingMiddleware(h http.Handler) http.Handler {
 		tags.HTTPMethod.Set(sp, r.Method)
 		tags.SpanKind.Set(sp, tags.SpanKindRPCServerEnum)
 		tags.HTTPUrl.Set(sp, r.URL.Path)
+		sp.LogFields(opentracinglog.String("url-query", r.URL.RawQuery))
 
 		defer func() {
 			tags.HTTPStatusCode.Set(sp, uint16(srw.status))
@@ -123,5 +125,22 @@ func TracingMiddleware(h http.Handler) http.Handler {
 		}()
 
 		h.ServeHTTP(srw, r.WithContext(newCtx))
+	})
+}
+
+// VersionRange decides whether to accept a version.
+type VersionRange func(version string) bool
+
+// ClientVersionCheckMiddleware checks the client version.
+func ClientVersionCheckMiddleware(h http.Handler, rng VersionRange) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		version := r.Header.Get("X-Client-Version")
+		logger.FromContext(r.Context()).AddContext("client-version", version)
+		if !rng(version) {
+			w.WriteHeader(400)
+			w.Write([]byte(fmt.Sprintf(`{"message": "client version '%s' not accepted, please upgrade"}`, version)))
+			return
+		}
+		h.ServeHTTP(w, r)
 	})
 }

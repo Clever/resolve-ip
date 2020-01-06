@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -13,6 +14,9 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
 	"github.com/gorilla/mux"
+	"github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/log"
+	"golang.org/x/xerrors"
 	"gopkg.in/Clever/kayvee-go.v6/logger"
 )
 
@@ -23,6 +27,7 @@ var _ = errors.New
 var _ = mux.Vars
 var _ = bytes.Compare
 var _ = ioutil.ReadAll
+var _ = log.String
 
 var formats = strfmt.Default
 var _ = formats
@@ -97,6 +102,8 @@ func (h handler) HealthCheckHandler(ctx context.Context, w http.ResponseWriter, 
 		logger.FromContext(ctx).AddContext("error", err.Error())
 		if btErr, ok := err.(*errors.Error); ok {
 			logger.FromContext(ctx).AddContext("stacktrace", string(btErr.Stack()))
+		} else if xerr, ok := err.(xerrors.Formatter); ok {
+			logger.FromContext(ctx).AddContext("frames", fmt.Sprintf("%+v", xerr))
 		}
 		statusCode := statusCodeForHealthCheck(err)
 		if statusCode == -1 {
@@ -115,6 +122,9 @@ func (h handler) HealthCheckHandler(ctx context.Context, w http.ResponseWriter, 
 // newHealthCheckInput takes in an http.Request an returns the input struct.
 func newHealthCheckInput(r *http.Request) (*models.HealthCheckInput, error) {
 	var input models.HealthCheckInput
+
+	sp := opentracing.SpanFromContext(r.Context())
+	_ = sp
 
 	var err error
 	_ = err
@@ -159,6 +169,8 @@ func statusCodeForLocationForIP(obj interface{}) int {
 
 func (h handler) LocationForIPHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 
+	sp := opentracing.SpanFromContext(ctx)
+
 	ip, err := newLocationForIPInput(r)
 	if err != nil {
 		logger.FromContext(ctx).AddContext("error", err.Error())
@@ -180,6 +192,8 @@ func (h handler) LocationForIPHandler(ctx context.Context, w http.ResponseWriter
 		logger.FromContext(ctx).AddContext("error", err.Error())
 		if btErr, ok := err.(*errors.Error); ok {
 			logger.FromContext(ctx).AddContext("stacktrace", string(btErr.Stack()))
+		} else if xerr, ok := err.(xerrors.Formatter); ok {
+			logger.FromContext(ctx).AddContext("frames", fmt.Sprintf("%+v", xerr))
 		}
 		statusCode := statusCodeForLocationForIP(err)
 		if statusCode == -1 {
@@ -190,6 +204,9 @@ func (h handler) LocationForIPHandler(ctx context.Context, w http.ResponseWriter
 		return
 	}
 
+	jsonSpan, _ := opentracing.StartSpanFromContext(ctx, "json-response-marshaling")
+	defer jsonSpan.Finish()
+
 	respBytes, err := json.MarshalIndent(resp, "", "\t")
 	if err != nil {
 		logger.FromContext(ctx).AddContext("error", err.Error())
@@ -197,6 +214,7 @@ func (h handler) LocationForIPHandler(ctx context.Context, w http.ResponseWriter
 		return
 	}
 
+	sp.LogFields(log.Int("response-size-bytes", len(respBytes)))
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCodeForLocationForIP(resp))
 	w.Write(respBytes)
