@@ -22,11 +22,17 @@ var _ = strings.Replace
 var _ = strconv.FormatInt
 var _ = bytes.Compare
 
+// Version of the client.
+const Version = "3.0.0"
+
+// VersionHeader is sent with every request.
+const VersionHeader = "X-Client-Version"
+
 // WagClient is used to make requests to the resolve-ip service.
 type WagClient struct {
 	basePath    string
 	requestDoer doer
-	transport   *http.Transport
+	client      *http.Client
 	timeout     time.Duration
 	// Keep the retry doer around so that we can set the number of retries
 	retryDoer *retryDoer
@@ -40,6 +46,7 @@ var _ Client = (*WagClient)(nil)
 
 // New creates a new client. The base path and http transport are configurable.
 func New(basePath string) *WagClient {
+	basePath = strings.TrimSuffix(basePath, "/")
 	base := baseDoer{}
 	tracing := tracingDoer{d: base}
 	// For the short-term don't use the default retry policy since its 5 retries can 5X
@@ -55,12 +62,12 @@ func New(basePath string) *WagClient {
 	}
 	circuit.init()
 	client := &WagClient{
+		basePath:       basePath,
 		requestDoer:    circuit,
+		client:         &http.Client{Transport: http.DefaultTransport},
 		retryDoer:      &retry,
 		circuitDoer:    circuit,
-		defaultTimeout: 10 * time.Second,
-		transport:      &http.Transport{},
-		basePath:       basePath,
+		defaultTimeout: 5 * time.Second,
 		logger:         logger,
 	}
 	client.SetCircuitBreakerSettings(DefaultCircuitBreakerSettings)
@@ -141,6 +148,11 @@ func (c *WagClient) SetTimeout(timeout time.Duration) {
 	c.defaultTimeout = timeout
 }
 
+// SetTransport sets the http transport used by the client.
+func (c *WagClient) SetTransport(t http.RoundTripper) {
+	c.client.Transport = t
+}
+
 // HealthCheck makes a GET request to /healthcheck
 // Checks if the service is healthy
 // 200: nil
@@ -163,7 +175,9 @@ func (c *WagClient) HealthCheck(ctx context.Context) error {
 }
 
 func (c *WagClient) doHealthCheckRequest(ctx context.Context, req *http.Request, headers map[string]string) error {
-	client := &http.Client{Transport: c.transport}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Canonical-Resource", "healthCheck")
+	req.Header.Set(VersionHeader, Version)
 
 	for field, value := range headers {
 		req.Header.Set(field, value)
@@ -180,7 +194,7 @@ func (c *WagClient) doHealthCheckRequest(ctx context.Context, req *http.Request,
 		defer cancel()
 		req = req.WithContext(ctx)
 	}
-	resp, err := c.requestDoer.Do(client, req)
+	resp, err := c.requestDoer.Do(c.client, req)
 	retCode := 0
 	if resp != nil {
 		retCode = resp.StatusCode
@@ -259,7 +273,9 @@ func (c *WagClient) LocationForIP(ctx context.Context, ip string) (*models.IP, e
 }
 
 func (c *WagClient) doLocationForIPRequest(ctx context.Context, req *http.Request, headers map[string]string) (*models.IP, error) {
-	client := &http.Client{Transport: c.transport}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Canonical-Resource", "locationForIP")
+	req.Header.Set(VersionHeader, Version)
 
 	for field, value := range headers {
 		req.Header.Set(field, value)
@@ -276,7 +292,7 @@ func (c *WagClient) doLocationForIPRequest(ctx context.Context, req *http.Reques
 		defer cancel()
 		req = req.WithContext(ctx)
 	}
-	resp, err := c.requestDoer.Do(client, req)
+	resp, err := c.requestDoer.Do(c.client, req)
 	retCode := 0
 	if resp != nil {
 		retCode = resp.StatusCode

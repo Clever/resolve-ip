@@ -6,7 +6,7 @@ import (
 	"github.com/Clever/resolve-ip/gen-go/models"
 )
 
-//go:generate $GOPATH/bin/mockgen -source=$GOFILE -destination=mock_controller.go -package=server
+//go:generate mockgen -source=$GOFILE -destination=mock_controller.go -package=server
 
 // Controller defines the interface for the resolve-ip service.
 type Controller interface {

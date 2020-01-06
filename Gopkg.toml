@@ -50,6 +50,7 @@
   name = "github.com/go-openapi/validate"
 
 [[constraint]]
+  branch = "master"
   name = "github.com/golang/mock"
 
 [[constraint]]
@@ -57,9 +58,6 @@
 
 [[constraint]]
   name = "github.com/kardianos/osext"
-
-[[constraint]]
-  name = "github.com/lightstep/lightstep-tracer-go"
 
 [[constraint]]
   name = "github.com/opentracing/opentracing-go"

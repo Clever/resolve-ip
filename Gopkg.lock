@@ -25,7 +25,11 @@
 
 [[projects]]
   name = "github.com/afex/hystrix-go"
-  packages = ["hystrix","hystrix/metric_collector","hystrix/rolling"]
+  packages = [
+    "hystrix",
+    "hystrix/metric_collector",
+    "hystrix/rolling"
+  ]
   revision = "39520ddd07a9d9a071d615f7476798659f5a3b89"
 
 [[projects]]
@@ -99,24 +103,21 @@
   revision = "deaf2c9013bc1a7f4c774662259a506ba874d80f"
 
 [[projects]]
-  name = "github.com/gogo/protobuf"
-  packages = ["proto"]
-  revision = "a31fa025390fe54d2af14a04199ed08dea5dc2fd"
-
-[[projects]]
+  branch = "master"
   name = "github.com/golang/mock"
   packages = ["gomock"]
-  revision = "bd3c8e81be01eef76d4b503f5e687d2d1354d2d9"
-
-[[projects]]
-  name = "github.com/golang/protobuf"
-  packages = ["proto","ptypes/timestamp"]
-  revision = "3852dcfda249c2097355a6aabb199a28d97b30df"
+  revision = "817c00c51bc737428ebc35ec43a49d72c04440e2"
 
 [[projects]]
   name = "github.com/gorilla/context"
   packages = ["."]
   revision = "aed02d124ae4a0e94fea4541c8effd05bf0c8296"
+
+[[projects]]
+  name = "github.com/gorilla/handlers"
+  packages = ["."]
+  revision = "8a3748addc242fc560bd6d4ff28b0374c010b1b4"
+  version = "v1.4.2"
 
 [[projects]]
   name = "github.com/gorilla/mux"
@@ -129,26 +130,29 @@
   revision = "9d302b58e975387d0b4d9be876622c86cefe64be"
 
 [[projects]]
-  name = "github.com/lightstep/lightstep-tracer-go"
-  packages = [".","collectorpb","lightstep_thrift","thrift_0_9_2/lib/go/thrift","thrift_rpc"]
-  revision = "0d48cd619841b1e1a3cdd20cd6ac97774c0002ce"
-
-[[projects]]
   name = "github.com/mailru/easyjson"
-  packages = ["buffer","jlexer","jwriter"]
+  packages = [
+    "buffer",
+    "jlexer",
+    "jwriter"
+  ]
   revision = "34560e358dc05e2c28f6fda2f5c9e7494a4b9b19"
 
 [[projects]]
-  name = "github.com/opentracing/basictracer-go"
-  packages = [".","wire"]
-  revision = "1b32af207119a14b1b231d451df3ed04a72efebf"
-  version = "v1.0.0"
+  name = "github.com/opentracing/opentracing-go"
+  packages = [
+    ".",
+    "ext",
+    "log"
+  ]
+  revision = "659c90643e714681897ec2521c60567dd21da733"
+  version = "v1.1.0"
 
 [[projects]]
-  name = "github.com/opentracing/opentracing-go"
-  packages = [".","ext","log"]
-  revision = "1949ddbfd147afd4d964a9f00b24eb291e0e7c38"
-  version = "v1.0.2"
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  revision = "ba968bfe8b2f7e042a574c888954fccecfa385b4"
+  version = "v0.8.1"
 
 [[projects]]
   name = "github.com/pmezard/go-difflib"
@@ -160,6 +164,36 @@
   packages = ["assert"]
   revision = "69483b4bd14f5845b5a1e55bca19e954e827f1d0"
   version = "v1.1.4"
+
+[[projects]]
+  name = "github.com/uber/jaeger-client-go"
+  packages = [
+    ".",
+    "config",
+    "internal/baggage",
+    "internal/baggage/remote",
+    "internal/spanlog",
+    "internal/throttler",
+    "internal/throttler/remote",
+    "log",
+    "rpcmetrics",
+    "thrift",
+    "thrift-gen/agent",
+    "thrift-gen/baggage",
+    "thrift-gen/jaeger",
+    "thrift-gen/sampling",
+    "thrift-gen/zipkincore",
+    "transport",
+    "utils"
+  ]
+  revision = "f2e1f58485aacf2975cdde9c9f5396e6d98c35ba"
+  version = "v2.21.1"
+
+[[projects]]
+  name = "github.com/uber/jaeger-lib"
+  packages = ["metrics"]
+  revision = "a87ae9d84fb038a8d79266298970720be7c80fcd"
+  version = "v2.2.0"
 
 [[projects]]
   branch = "master"
@@ -179,41 +213,105 @@
   revision = "702b404897d4364af44dc8dcabc9815947942325"
 
 [[projects]]
+  name = "go.uber.org/atomic"
+  packages = ["."]
+  revision = "40ae6a40a970ef4cdbffa7b24b280e316db8accc"
+  version = "v1.5.1"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/lint"
+  packages = [
+    ".",
+    "golint"
+  ]
+  revision = "fdd1cda4f05fd1fd86124f0ef9ce31a0b72c8448"
+
+[[projects]]
   name = "golang.org/x/net"
-  packages = ["context","context/ctxhttp","http2","http2/hpack","idna","internal/timeseries","lex/httplex","trace"]
+  packages = [
+    "context",
+    "context/ctxhttp",
+    "idna"
+  ]
   revision = "9bc2a3340c92c17a20edcd0080e93851ed58f5d5"
 
 [[projects]]
   name = "golang.org/x/text"
-  packages = ["cases","internal/gen","internal/tag","internal/triegen","internal/ucd","language","runes","secure/bidirule","secure/precis","transform","unicode/bidi","unicode/cldr","unicode/norm","unicode/rangetable","width"]
+  packages = [
+    "cases",
+    "internal/gen",
+    "internal/tag",
+    "internal/triegen",
+    "internal/ucd",
+    "language",
+    "runes",
+    "secure/bidirule",
+    "secure/precis",
+    "transform",
+    "unicode/bidi",
+    "unicode/cldr",
+    "unicode/norm",
+    "unicode/rangetable",
+    "width"
+  ]
   revision = "2910a502d2bf9e43193af9d68ca516529614eed3"
 
 [[projects]]
-  name = "google.golang.org/grpc"
-  packages = [".","codes","credentials","grpclog","internal","metadata","naming","peer","stats","tap","transport"]
-  revision = "c8105071640ef29fce843ed96983e864bb18eb0e"
+  branch = "master"
+  name = "golang.org/x/tools"
+  packages = [
+    "go/ast/astutil",
+    "go/gcexportdata",
+    "go/internal/gcimporter",
+    "go/types/typeutil"
+  ]
+  revision = "7be0a674c9fc78b6627a534052066b112b66be5d"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/xerrors"
+  packages = [
+    ".",
+    "internal"
+  ]
+  revision = "9bdfabe68543c54f90421aeb9a60ef8061b5b544"
 
 [[projects]]
   name = "gopkg.in/Clever/kayvee-go.v3"
-  packages = [".","logger"]
+  packages = [
+    ".",
+    "logger"
+  ]
   revision = "056c92dcc68b40c5d6045f755197b3776f914154"
   version = "v3.2.1"
 
 [[projects]]
   name = "gopkg.in/Clever/kayvee-go.v5"
-  packages = [".","logger"]
+  packages = [
+    ".",
+    "logger"
+  ]
   revision = "865aa5e4bbe8e274c69accd53f0b1e2ecc484cd8"
   version = "v5.2.1"
 
 [[projects]]
   name = "gopkg.in/Clever/kayvee-go.v6"
-  packages = [".","logger","middleware","router"]
+  packages = [
+    ".",
+    "logger",
+    "middleware",
+    "router"
+  ]
   revision = "096364e316a52652d3493be702d8105d8d01db84"
   version = "v6.6.0"
 
 [[projects]]
   name = "gopkg.in/Clever/optimus.v3"
-  packages = [".","sources/csv"]
+  packages = [
+    ".",
+    "sources/csv"
+  ]
   revision = "e4810ba9d12db3a27c8f5b420aa291cf2f100b8e"
   version = "v3.7.3"
 
@@ -231,6 +329,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b5b615e8b4a96f60f777b5e46f534cab8d5859005669846a5af535b68ff700f7"
+  inputs-digest = "506b5283a1f2ff3efed8d6f55c5dbb99e0fdfba75d97667cfe09111e45fe0d97"
   solver-name = "gps-cdcl"
   solver-version = 1

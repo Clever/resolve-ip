@@ -1,5 +1,4 @@
 env:
-- LIGHTSTEP_ACCESS_TOKEN
 resources:
   cpu: .25
   max_mem: 1

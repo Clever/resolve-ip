@@ -74,6 +74,7 @@ const noRetryPolicy = {
  * Request status log is used to
  * to output the status of a request returned
  * by the client.
+ * @private
  */
 function responseLog(logger, req, res, err) {
   var res = res || { };
@@ -91,6 +92,22 @@ function responseLog(logger, req, res, err) {
   } else {
     logger.infoD("client-request-finished", logData);
   }
+}
+
+/**
+ * Takes a promise and uses the provided callback (if any) to handle promise
+ * resolutions and rejections
+ * @private
+ */
+function applyCallback(promise, cb) {
+  if (!cb) {
+    return promise;
+  }
+  return promise.then((result) => {
+    cb(null, result);
+  }).catch((err) => {
+    cb(err);
+  });
 }
 
 /**
@@ -127,10 +144,12 @@ class ResolveIP {
    * @param {bool} [options.discovery] - Use clever-discovery to locate the server. Must provide
    * this or the address argument
    * @param {number} [options.timeout] - The timeout to use for all client requests,
-   * in milliseconds. This can be overridden on a per-request basis.
+   * in milliseconds. This can be overridden on a per-request basis. Default is 5000ms.
+   * @param {bool} [options.keepalive] - Set keepalive to true for client requests. This sets the
+   * forever: true attribute in request. Defaults to true.
    * @param {module:resolve-ip.RetryPolicies} [options.retryPolicy=RetryPolicies.Single] - The logic to
    * determine which requests to retry, as well as how many times to retry.
-   * @param {module:kayvee.Logger} [options.logger=logger.New("resolve-ip-wagclient")] - The Kayvee 
+   * @param {module:kayvee.Logger} [options.logger=logger.New("resolve-ip-wagclient")] - The Kayvee
    * logger to use in the client.
    * @param {Object} [options.circuit] - Options for constructing the client's circuit breaker.
    * @param {bool} [options.circuit.forceClosed] - When set to true the circuit will always be closed. Default: true.
@@ -149,17 +168,24 @@ class ResolveIP {
 
     if (options.discovery) {
       try {
-        this.address = discovery("resolve-ip", "http").url();
+        this.address = discovery(options.serviceName || "resolve-ip", "http").url();
       } catch (e) {
-        this.address = discovery("resolve-ip", "default").url();
+        this.address = discovery(options.serviceName || "resolve-ip", "default").url();
       }
     } else if (options.address) {
       this.address = options.address;
     } else {
       throw new Error("Cannot initialize resolve-ip without discovery or address");
     }
+    if (options.keepalive !== undefined) {
+      this.keepalive = options.keepalive;
+    } else {
+      this.keepalive = true;
+    }
     if (options.timeout) {
       this.timeout = options.timeout;
+    } else {
+      this.timeout = 5000;
     }
     if (options.retryPolicy) {
       this.retryPolicy = options.retryPolicy;
@@ -167,11 +193,16 @@ class ResolveIP {
     if (options.logger) {
       this.logger = options.logger;
     } else {
-      this.logger =  new kayvee.logger("resolve-ip-wagclient");
+      this.logger = new kayvee.logger((options.serviceName || "resolve-ip") + "-wagclient");
+    }
+    if (options.tracer) {
+      this.tracer = options.tracer;
+    } else {
+      this.tracer = opentracing.globalTracer();
     }
 
     const circuitOptions = Object.assign({}, defaultCircuitOptions, options.circuit);
-    this._hystrixCommand = commandFactory.getOrCreate("resolve-ip").
+    this._hystrixCommand = commandFactory.getOrCreate(options.serviceName || "resolve-ip").
       errorHandler(this._hystrixCommandErrorHandler).
       circuitBreakerForceClosed(circuitOptions.forceClosed).
       requestVolumeRejectionThreshold(circuitOptions.maxConcurrentRequests).
@@ -233,44 +264,38 @@ class ResolveIP {
    * @reject {Error}
    */
   healthCheck(options, cb) {
-    return this._hystrixCommand.execute(this._healthCheck, arguments);
+    let callback = cb;
+    if (!cb && typeof options === "function") {
+      callback = options;
+    }
+    return applyCallback(this._hystrixCommand.execute(this._healthCheck, arguments), callback);
   }
+
   _healthCheck(options, cb) {
     const params = {};
 
     if (!cb && typeof options === "function") {
-      cb = options;
       options = undefined;
     }
 
     return new Promise((resolve, reject) => {
-      const rejecter = (err) => {
-        reject(err);
-        if (cb) {
-          cb(err);
-        }
-      };
-      const resolver = (data) => {
-        resolve(data);
-        if (cb) {
-          cb(null, data);
-        }
-      };
-
-
       if (!options) {
         options = {};
       }
 
       const timeout = options.timeout || this.timeout;
+      const tracer = options.tracer || this.tracer;
       const span = options.span;
 
       const headers = {};
+      headers["Canonical-Resource"] = "healthCheck";
+      headers[versionHeader] = version;
 
       const query = {};
 
       if (span) {
-        opentracing.inject(span, opentracing.FORMAT_TEXT_MAP, headers);
+        // Need to get tracer to inject. Use HTTP headers format so we can properly escape special characters
+        tracer.inject(span, opentracing.FORMAT_HTTP_HEADERS, headers);
         span.logEvent("GET /healthcheck");
         span.setTag("span.kind", "client");
       }
@@ -284,12 +309,15 @@ class ResolveIP {
         qs: query,
         useQuerystring: true,
       };
-  
+      if (this.keepalive) {
+        requestOptions.forever = true;
+      }
+
 
       const retryPolicy = options.retryPolicy || this.retryPolicy || singleRetryPolicy;
       const backoffs = retryPolicy.backoffs();
       const logger = this.logger;
-  
+
       let retries = 0;
       (function requestOnce() {
         request(requestOptions, (err, response, body) => {
@@ -302,31 +330,31 @@ class ResolveIP {
           if (err) {
             err._fromRequest = true;
             responseLog(logger, requestOptions, response, err)
-            rejecter(err);
+            reject(err);
             return;
           }
 
           switch (response.statusCode) {
             case 200:
-              resolver();
+              resolve();
               break;
-            
+
             case 400:
               var err = new Errors.BadRequest(body || {});
               responseLog(logger, requestOptions, response, err);
-              rejecter(err);
+              reject(err);
               return;
-            
+
             case 500:
               var err = new Errors.InternalError(body || {});
               responseLog(logger, requestOptions, response, err);
-              rejecter(err);
+              reject(err);
               return;
-            
+
             default:
               var err = new Error("Received unexpected statusCode " + response.statusCode);
               responseLog(logger, requestOptions, response, err);
-              rejecter(err);
+              reject(err);
               return;
           }
         });
@@ -350,49 +378,43 @@ class ResolveIP {
    * @reject {Error}
    */
   locationForIP(ip, options, cb) {
-    return this._hystrixCommand.execute(this._locationForIP, arguments);
+    let callback = cb;
+    if (!cb && typeof options === "function") {
+      callback = options;
+    }
+    return applyCallback(this._hystrixCommand.execute(this._locationForIP, arguments), callback);
   }
+
   _locationForIP(ip, options, cb) {
     const params = {};
     params["ip"] = ip;
 
     if (!cb && typeof options === "function") {
-      cb = options;
       options = undefined;
     }
 
     return new Promise((resolve, reject) => {
-      const rejecter = (err) => {
-        reject(err);
-        if (cb) {
-          cb(err);
-        }
-      };
-      const resolver = (data) => {
-        resolve(data);
-        if (cb) {
-          cb(null, data);
-        }
-      };
-
-
       if (!options) {
         options = {};
       }
 
       const timeout = options.timeout || this.timeout;
+      const tracer = options.tracer || this.tracer;
       const span = options.span;
 
       const headers = {};
+      headers["Canonical-Resource"] = "locationForIP";
+      headers[versionHeader] = version;
       if (!params.ip) {
-        rejecter(new Error("ip must be non-empty because it's a path parameter"));
+        reject(new Error("ip must be non-empty because it's a path parameter"));
         return;
       }
 
       const query = {};
 
       if (span) {
-        opentracing.inject(span, opentracing.FORMAT_TEXT_MAP, headers);
+        // Need to get tracer to inject. Use HTTP headers format so we can properly escape special characters
+        tracer.inject(span, opentracing.FORMAT_HTTP_HEADERS, headers);
         span.logEvent("GET /ip/{ip}");
         span.setTag("span.kind", "client");
       }
@@ -406,12 +428,15 @@ class ResolveIP {
         qs: query,
         useQuerystring: true,
       };
-  
+      if (this.keepalive) {
+        requestOptions.forever = true;
+      }
+
 
       const retryPolicy = options.retryPolicy || this.retryPolicy || singleRetryPolicy;
       const backoffs = retryPolicy.backoffs();
       const logger = this.logger;
-  
+
       let retries = 0;
       (function requestOnce() {
         request(requestOptions, (err, response, body) => {
@@ -424,37 +449,37 @@ class ResolveIP {
           if (err) {
             err._fromRequest = true;
             responseLog(logger, requestOptions, response, err)
-            rejecter(err);
+            reject(err);
             return;
           }
 
           switch (response.statusCode) {
             case 200:
-              resolver(body);
+              resolve(body);
               break;
-            
+
             case 400:
               var err = new Errors.BadRequest(body || {});
               responseLog(logger, requestOptions, response, err);
-              rejecter(err);
+              reject(err);
               return;
-            
+
             case 404:
               var err = new Errors.NotFound(body || {});
               responseLog(logger, requestOptions, response, err);
-              rejecter(err);
+              reject(err);
               return;
-            
+
             case 500:
               var err = new Errors.InternalError(body || {});
               responseLog(logger, requestOptions, response, err);
-              rejecter(err);
+              reject(err);
               return;
-            
+
             default:
               var err = new Error("Received unexpected statusCode " + response.statusCode);
               responseLog(logger, requestOptions, response, err);
-              rejecter(err);
+              reject(err);
               return;
           }
         });
@@ -482,3 +507,8 @@ module.exports.RetryPolicies = {
 module.exports.Errors = Errors;
 
 module.exports.DefaultCircuitOptions = defaultCircuitOptions;
+
+const version = "3.0.0";
+const versionHeader = "X-Client-Version";
+module.exports.Version = version;
+module.exports.VersionHeader = versionHeader;

@@ -4,10 +4,6 @@ import (
 	"context"
 	"flag"
 	"log"
-	"os"
-
-	lightstep "github.com/lightstep/lightstep-tracer-go"
-	opentracing "github.com/opentracing/opentracing-go"
 
 	"github.com/Clever/resolve-ip/gen-go/models"
 	"github.com/Clever/resolve-ip/gen-go/server"
@@ -46,15 +42,6 @@ func (h handler) LocationForIP(ctx context.Context, ip string) (*models.IP, erro
 func main() {
 	flag.Parse()
 	logger := logger.New("resolve-ip")
-
-	tags := make(map[string]interface{})
-	tags[lightstep.ComponentNameKey] = "resolve-ip"
-	lightstepTracer := lightstep.NewTracer(lightstep.Options{
-		AccessToken: os.Getenv("LIGHTSTEP_ACCESS_TOKEN"),
-		Tags:        tags,
-	})
-	defer lightstep.FlushLightStepTracer(lightstepTracer)
-	opentracing.InitGlobalTracer(lightstepTracer)
 
 	logger.Debug("build-db-start")
 	db, err := NewGeoDB(*path)
