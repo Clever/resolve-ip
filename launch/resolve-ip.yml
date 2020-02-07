@@ -8,12 +8,12 @@ expose:
     health_check:
       type: http
       path: /healthcheck
-team: eng-instant-login
+team: eng-portal-sso
 databases: []
 alarms:
   - type: InternalErrorAlarm
     severity: major
-    channel: "#instant-login-alerts"
+    channel: "#portal-sso-alerts"
     parameters:
       threshold: 0.01
       evaluationPeriods: 3
@@ -21,7 +21,7 @@ alarms:
       requestMinimum: 100
   - type: InternalErrorAlarm
     severity: critical
-    channel: "#oncall-instant-login"
+    channel: "#oncall-portal-sso"
     parameters:
       threshold: 0.05
       evaluationPeriods: 10
