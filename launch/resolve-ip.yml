@@ -13,7 +13,7 @@ databases: []
 alarms:
   - type: InternalErrorAlarm
     severity: major
-    channel: "#portal-sso-alerts"
+    channel: "#portal-sso-major-alerts"
     parameters:
       threshold: 0.01
       evaluationPeriods: 3
