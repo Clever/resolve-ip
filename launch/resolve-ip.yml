@@ -27,3 +27,9 @@ alarms:
       evaluationPeriods: 10
     extraParameters:
       requestMinimum: 100
+pod_config:
+  group: us-west-1
+  prod:
+    migrationState: deployable
+  dev:
+    migrationState: deployable
