@@ -1,7 +1,7 @@
 env:
 resources:
-  cpu: .25
-  max_mem: 1
+  cpu: 1.5
+  max_mem: 0.5
 expose:
   - name: http
     port: 80
@@ -27,3 +27,9 @@ alarms:
       evaluationPeriods: 10
     extraParameters:
       requestMinimum: 100
+pod_config:
+  group: us-west-1
+  prod:
+    migrationState: deployable
+  dev:
+    migrationState: deployable
