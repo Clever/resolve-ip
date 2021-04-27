@@ -1,35 +1,35 @@
 env:
 resources:
-  cpu: 1.5
-  max_mem: 0.5
+  cpu: 2
+  max_mem: 4
 expose:
-  - name: http
-    port: 80
-    health_check:
-      type: http
-      path: /healthcheck
+- name: http
+  port: 80
+  health_check:
+    type: http
+    path: /healthcheck
 team: eng-identity
 databases: []
 alarms:
-  - type: InternalErrorAlarm
-    severity: major
-    channel: "#portal-sso-major-alerts"
-    parameters:
-      threshold: 0.01
-      evaluationPeriods: 3
-    extraParameters:
-      requestMinimum: 100
-  - type: InternalErrorAlarm
-    severity: critical
-    channel: "#oncall-portal-sso"
-    parameters:
-      threshold: 0.05
-      evaluationPeriods: 10
-    extraParameters:
-      requestMinimum: 100
+- type: InternalErrorAlarm
+  severity: major
+  channel: '#portal-sso-major-alerts'
+  parameters:
+    threshold: 0.01
+    evaluationPeriods: 3
+  extraParameters:
+    requestMinimum: 100
+- type: InternalErrorAlarm
+  severity: critical
+  channel: '#oncall-portal-sso'
+  parameters:
+    threshold: 0.05
+    evaluationPeriods: 10
+  extraParameters:
+    requestMinimum: 100
 pod_config:
-  group: us-west-1
-  prod:
-    migrationState: deployable
   dev:
     migrationState: podOnly
+  group: us-west-1
+  prod:
+    migrationState: discoverable
