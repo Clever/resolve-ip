@@ -28,8 +28,4 @@ alarms:
   extraParameters:
     requestMinimum: 100
 pod_config:
-  dev:
-    migrationState: podOnly
   group: us-west-1
-  prod:
-    migrationState: podOnly
