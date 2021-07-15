@@ -40,7 +40,7 @@ Create a new client object.
 | [options.discovery] | <code>bool</code> |  | Use clever-discovery to locate the server. Must provide this or the address argument |
 | [options.timeout] | <code>number</code> |  | The timeout to use for all client requests, in milliseconds. This can be overridden on a per-request basis. Default is 5000ms. |
 | [options.keepalive] | <code>bool</code> |  | Set keepalive to true for client requests. This sets the forever: true attribute in request. Defaults to true. |
-| [options.retryPolicy] | <code>[RetryPolicies](#module_resolve-ip--ResolveIP.RetryPolicies)</code> | <code>RetryPolicies.Single</code> | The logic to determine which requests to retry, as well as how many times to retry. |
+| [options.retryPolicy] | [<code>RetryPolicies</code>](#module_resolve-ip--ResolveIP.RetryPolicies) | <code>RetryPolicies.Single</code> | The logic to determine which requests to retry, as well as how many times to retry. |
 | [options.logger] | <code>module:kayvee.Logger</code> | <code>logger.New(&quot;resolve-ip-wagclient&quot;)</code> | The Kayvee logger to use in the client. |
 | [options.circuit] | <code>Object</code> |  | Options for constructing the client's circuit breaker. |
 | [options.circuit.forceClosed] | <code>bool</code> |  | When set to true the circuit will always be closed. Default: true. |
@@ -54,18 +54,18 @@ Create a new client object.
 #### resolveIP.healthCheck([options], [cb]) ⇒ <code>Promise</code>
 Checks if the service is healthy
 
-**Kind**: instance method of <code>[ResolveIP](#exp_module_resolve-ip--ResolveIP)</code>  
+**Kind**: instance method of [<code>ResolveIP</code>](#exp_module_resolve-ip--ResolveIP)  
 **Fulfill**: <code>undefined</code>  
-**Reject**: <code>[BadRequest](#module_resolve-ip--ResolveIP.Errors.BadRequest)</code>  
-**Reject**: <code>[InternalError](#module_resolve-ip--ResolveIP.Errors.InternalError)</code>  
+**Reject**: [<code>BadRequest</code>](#module_resolve-ip--ResolveIP.Errors.BadRequest)  
+**Reject**: [<code>InternalError</code>](#module_resolve-ip--ResolveIP.Errors.InternalError)  
 **Reject**: <code>Error</code>  
 
 | Param | Type | Description |
 | --- | --- | --- |
 | [options] | <code>object</code> |  |
 | [options.timeout] | <code>number</code> | A request specific timeout |
-| [options.span] | <code>[Span](https://doc.esdoc.org/github.com/opentracing/opentracing-javascript/class/src/span.js~Span.html)</code> | An OpenTracing span - For example from the parent request |
-| [options.retryPolicy] | <code>[RetryPolicies](#module_resolve-ip--ResolveIP.RetryPolicies)</code> | A request specific retryPolicy |
+| [options.span] | [<code>Span</code>](https://doc.esdoc.org/github.com/opentracing/opentracing-javascript/class/src/span.js~Span.html) | An OpenTracing span - For example from the parent request |
+| [options.retryPolicy] | [<code>RetryPolicies</code>](#module_resolve-ip--ResolveIP.RetryPolicies) | A request specific retryPolicy |
 | [cb] | <code>function</code> |  |
 
 <a name="module_resolve-ip--ResolveIP+locationForIP"></a>
@@ -73,11 +73,11 @@ Checks if the service is healthy
 #### resolveIP.locationForIP(ip, [options], [cb]) ⇒ <code>Promise</code>
 Gets the lat/lon for a given IP.
 
-**Kind**: instance method of <code>[ResolveIP](#exp_module_resolve-ip--ResolveIP)</code>  
+**Kind**: instance method of [<code>ResolveIP</code>](#exp_module_resolve-ip--ResolveIP)  
 **Fulfill**: <code>Object</code>  
-**Reject**: <code>[BadRequest](#module_resolve-ip--ResolveIP.Errors.BadRequest)</code>  
-**Reject**: <code>[NotFound](#module_resolve-ip--ResolveIP.Errors.NotFound)</code>  
-**Reject**: <code>[InternalError](#module_resolve-ip--ResolveIP.Errors.InternalError)</code>  
+**Reject**: [<code>BadRequest</code>](#module_resolve-ip--ResolveIP.Errors.BadRequest)  
+**Reject**: [<code>NotFound</code>](#module_resolve-ip--ResolveIP.Errors.NotFound)  
+**Reject**: [<code>InternalError</code>](#module_resolve-ip--ResolveIP.Errors.InternalError)  
 **Reject**: <code>Error</code>  
 
 | Param | Type | Description |
@@ -85,8 +85,8 @@ Gets the lat/lon for a given IP.
 | ip | <code>string</code> | The IP to try to locate |
 | [options] | <code>object</code> |  |
 | [options.timeout] | <code>number</code> | A request specific timeout |
-| [options.span] | <code>[Span](https://doc.esdoc.org/github.com/opentracing/opentracing-javascript/class/src/span.js~Span.html)</code> | An OpenTracing span - For example from the parent request |
-| [options.retryPolicy] | <code>[RetryPolicies](#module_resolve-ip--ResolveIP.RetryPolicies)</code> | A request specific retryPolicy |
+| [options.span] | [<code>Span</code>](https://doc.esdoc.org/github.com/opentracing/opentracing-javascript/class/src/span.js~Span.html) | An OpenTracing span - For example from the parent request |
+| [options.retryPolicy] | [<code>RetryPolicies</code>](#module_resolve-ip--ResolveIP.RetryPolicies) | A request specific retryPolicy |
 | [cb] | <code>function</code> |  |
 
 <a name="module_resolve-ip--ResolveIP.RetryPolicies"></a>
@@ -94,7 +94,7 @@ Gets the lat/lon for a given IP.
 #### ResolveIP.RetryPolicies
 Retry policies available to use.
 
-**Kind**: static property of <code>[ResolveIP](#exp_module_resolve-ip--ResolveIP)</code>  
+**Kind**: static property of [<code>ResolveIP</code>](#exp_module_resolve-ip--ResolveIP)  
 
 * [.RetryPolicies](#module_resolve-ip--ResolveIP.RetryPolicies)
     * [.Exponential](#module_resolve-ip--ResolveIP.RetryPolicies.Exponential)
@@ -106,25 +106,25 @@ Retry policies available to use.
 ##### RetryPolicies.Exponential
 The exponential retry policy will retry five times with an exponential backoff.
 
-**Kind**: static constant of <code>[RetryPolicies](#module_resolve-ip--ResolveIP.RetryPolicies)</code>  
+**Kind**: static constant of [<code>RetryPolicies</code>](#module_resolve-ip--ResolveIP.RetryPolicies)  
 <a name="module_resolve-ip--ResolveIP.RetryPolicies.Single"></a>
 
 ##### RetryPolicies.Single
 Use this retry policy to retry a request once.
 
-**Kind**: static constant of <code>[RetryPolicies](#module_resolve-ip--ResolveIP.RetryPolicies)</code>  
+**Kind**: static constant of [<code>RetryPolicies</code>](#module_resolve-ip--ResolveIP.RetryPolicies)  
 <a name="module_resolve-ip--ResolveIP.RetryPolicies.None"></a>
 
 ##### RetryPolicies.None
 Use this retry policy to turn off retries.
 
-**Kind**: static constant of <code>[RetryPolicies](#module_resolve-ip--ResolveIP.RetryPolicies)</code>  
+**Kind**: static constant of [<code>RetryPolicies</code>](#module_resolve-ip--ResolveIP.RetryPolicies)  
 <a name="module_resolve-ip--ResolveIP.Errors"></a>
 
 #### ResolveIP.Errors
 Errors returned by methods.
 
-**Kind**: static property of <code>[ResolveIP](#exp_module_resolve-ip--ResolveIP)</code>  
+**Kind**: static property of [<code>ResolveIP</code>](#exp_module_resolve-ip--ResolveIP)  
 
 * [.Errors](#module_resolve-ip--ResolveIP.Errors)
     * [.BadRequest](#module_resolve-ip--ResolveIP.Errors.BadRequest) ⇐ <code>Error</code>
@@ -136,8 +136,8 @@ Errors returned by methods.
 ##### Errors.BadRequest ⇐ <code>Error</code>
 BadRequest
 
-**Kind**: static class of <code>[Errors](#module_resolve-ip--ResolveIP.Errors)</code>  
-**Extends:** <code>Error</code>  
+**Kind**: static class of [<code>Errors</code>](#module_resolve-ip--ResolveIP.Errors)  
+**Extends**: <code>Error</code>  
 **Properties**
 
 | Name | Type |
@@ -149,8 +149,8 @@ BadRequest
 ##### Errors.InternalError ⇐ <code>Error</code>
 InternalError
 
-**Kind**: static class of <code>[Errors](#module_resolve-ip--ResolveIP.Errors)</code>  
-**Extends:** <code>Error</code>  
+**Kind**: static class of [<code>Errors</code>](#module_resolve-ip--ResolveIP.Errors)  
+**Extends**: <code>Error</code>  
 **Properties**
 
 | Name | Type |
@@ -162,8 +162,8 @@ InternalError
 ##### Errors.NotFound ⇐ <code>Error</code>
 NotFound
 
-**Kind**: static class of <code>[Errors](#module_resolve-ip--ResolveIP.Errors)</code>  
-**Extends:** <code>Error</code>  
+**Kind**: static class of [<code>Errors</code>](#module_resolve-ip--ResolveIP.Errors)  
+**Extends**: <code>Error</code>  
 **Properties**
 
 | Name | Type |
@@ -175,4 +175,4 @@ NotFound
 #### ResolveIP.DefaultCircuitOptions
 Default circuit breaker options.
 
-**Kind**: static constant of <code>[ResolveIP](#exp_module_resolve-ip--ResolveIP)</code>  
+**Kind**: static constant of [<code>ResolveIP</code>](#exp_module_resolve-ip--ResolveIP)  
