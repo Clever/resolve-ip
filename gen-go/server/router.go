@@ -3,13 +3,17 @@ package server
 // Code auto-generated. Do not edit.
 
 import (
+	"compress/gzip"
+	"context"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"path"
 	"strconv"
+	"syscall"
 	"time"
 
 	// register pprof listener
@@ -25,7 +29,6 @@ import (
 	"github.com/uber/jaeger-client-go/transport"
 	"gopkg.in/Clever/kayvee-go.v6/logger"
 	kvMiddleware "gopkg.in/Clever/kayvee-go.v6/middleware"
-	"gopkg.in/tylerb/graceful.v1"
 )
 
 const (
@@ -42,6 +45,17 @@ type Server struct {
 	Handler http.Handler
 	addr    string
 	l       logger.KayveeLogger
+	config  serverConfig
+}
+
+type serverConfig struct {
+	compressionLevel int
+}
+
+func CompressionLevel(level int) func(*serverConfig) {
+	return func(c *serverConfig) {
+		c.compressionLevel = level
+	}
 }
 
 // Serve starts the server. It will return if an error occurs.
@@ -134,7 +148,35 @@ func (s *Server) Serve() error {
 	s.l.Counter("server-started")
 
 	// Give the sever 30 seconds to shut down
-	return graceful.RunWithErr(s.addr, 30*time.Second, s.Handler)
+	server := &http.Server{
+		Addr:        s.addr,
+		Handler:     s.Handler,
+		IdleTimeout: 3 * time.Minute,
+	}
+	server.SetKeepAlivesEnabled(true)
+
+	// Give the server 30 seconds to shut down gracefully after it receives a signal
+	shutdown := make(chan struct{})
+	go func() {
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, os.Interrupt, os.Signal(syscall.SIGTERM))
+		sig := <-c
+		s.l.InfoD("shutdown-initiated", logger.M{"signal": sig.String()})
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		defer close(shutdown)
+		if err := server.Shutdown(ctx); err != nil {
+			s.l.CriticalD("error-during-shutdown", logger.M{"error": err.Error()})
+		}
+	}()
+
+	if err := server.ListenAndServe(); err != http.ErrServerClosed {
+		return err
+	}
+	// ensure we wait for graceful shutdown
+	<-shutdown
+
+	return nil
 }
 
 type handler struct {
@@ -145,11 +187,11 @@ func startLoggingProcessMetrics() {
 	metrics.Log("resolve-ip", 1*time.Minute)
 }
 
-func withMiddleware(serviceName string, router http.Handler, m []func(http.Handler) http.Handler) http.Handler {
+func withMiddleware(serviceName string, router http.Handler, m []func(http.Handler) http.Handler, config serverConfig) http.Handler {
 	handler := router
 
 	// compress everything
-	handler = handlers.CompressHandler(handler)
+	handler = handlers.CompressHandlerLevel(handler, config.compressionLevel)
 
 	// Wrap the middleware in the opposite order specified so that when called then run
 	// in the order specified
@@ -166,8 +208,8 @@ func withMiddleware(serviceName string, router http.Handler, m []func(http.Handl
 }
 
 // New returns a Server that implements the Controller interface. It will start when "Serve" is called.
-func New(c Controller, addr string) *Server {
-	return NewWithMiddleware(c, addr, []func(http.Handler) http.Handler{})
+func New(c Controller, addr string, options ...func(*serverConfig)) *Server {
+	return NewWithMiddleware(c, addr, []func(http.Handler) http.Handler{}, options...)
 }
 
 // NewRouter returns a mux.Router with no middleware. This is so we can attach additional routes to the
@@ -200,19 +242,29 @@ func newRouter(c Controller) *mux.Router {
 // NewWithMiddleware returns a Server that implemenets the Controller interface. It runs the
 // middleware after the built-in middleware (e.g. logging), but before the controller methods.
 // The middleware is executed in the order specified. The server will start when "Serve" is called.
-func NewWithMiddleware(c Controller, addr string, m []func(http.Handler) http.Handler) *Server {
+func NewWithMiddleware(c Controller, addr string, m []func(http.Handler) http.Handler, options ...func(*serverConfig)) *Server {
 	router := newRouter(c)
 
-	return AttachMiddleware(router, addr, m)
+	return AttachMiddleware(router, addr, m, options...)
 }
 
 // AttachMiddleware attaches the given middleware to the router; this is to be used in conjunction with
 // NewServer. It attaches custom middleware passed as arguments as well as the built-in middleware for
 // logging, tracing, and handling panics. It should be noted that the built-in middleware executes first
 // followed by the passed in middleware (in the order specified).
-func AttachMiddleware(router *mux.Router, addr string, m []func(http.Handler) http.Handler) *Server {
+func AttachMiddleware(router *mux.Router, addr string, m []func(http.Handler) http.Handler, options ...func(*serverConfig)) *Server {
+	// Set sane defaults, to be overriden by the varargs functions.
+	// This would probably be better done in NewWithMiddleware, but there are services that call
+	// AttachMiddleWare directly instead.
+	config := serverConfig{
+		compressionLevel: gzip.DefaultCompression,
+	}
+	for _, option := range options {
+		option(&config)
+	}
+
 	l := logger.New("resolve-ip")
 
-	handler := withMiddleware("resolve-ip", router, m)
-	return &Server{Handler: handler, addr: addr, l: l}
+	handler := withMiddleware("resolve-ip", router, m, config)
+	return &Server{Handler: handler, addr: addr, l: l, config: config}
 }

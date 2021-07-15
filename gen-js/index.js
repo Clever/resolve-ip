@@ -293,16 +293,17 @@ class ResolveIP {
 
       const query = {};
 
-      if (span) {
+      if (span && typeof span.log === "function") {
         // Need to get tracer to inject. Use HTTP headers format so we can properly escape special characters
         tracer.inject(span, opentracing.FORMAT_HTTP_HEADERS, headers);
-        span.logEvent("GET /healthcheck");
+        span.log({event: "GET /healthcheck"});
         span.setTag("span.kind", "client");
       }
 
       const requestOptions = {
         method: "GET",
         uri: this.address + "/healthcheck",
+        gzip: true,
         json: true,
         timeout,
         headers,
@@ -412,16 +413,17 @@ class ResolveIP {
 
       const query = {};
 
-      if (span) {
+      if (span && typeof span.log === "function") {
         // Need to get tracer to inject. Use HTTP headers format so we can properly escape special characters
         tracer.inject(span, opentracing.FORMAT_HTTP_HEADERS, headers);
-        span.logEvent("GET /ip/{ip}");
+        span.log({event: "GET /ip/{ip}"});
         span.setTag("span.kind", "client");
       }
 
       const requestOptions = {
         method: "GET",
         uri: this.address + "/ip/" + params.ip + "",
+        gzip: true,
         json: true,
         timeout,
         headers,
@@ -508,7 +510,7 @@ module.exports.Errors = Errors;
 
 module.exports.DefaultCircuitOptions = defaultCircuitOptions;
 
-const version = "3.0.0";
+const version = "4.0.0";
 const versionHeader = "X-Client-Version";
 module.exports.Version = version;
 module.exports.VersionHeader = versionHeader;

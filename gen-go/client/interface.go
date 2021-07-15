@@ -3,7 +3,7 @@ package client
 import (
 	"context"
 
-	"github.com/Clever/resolve-ip/gen-go/models"
+	"github.com/Clever/resolve-ip/v4/gen-go/models"
 )
 
 //go:generate mockgen -source=$GOFILE -destination=mock_client.go -package=client
