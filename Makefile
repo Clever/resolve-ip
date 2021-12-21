@@ -11,7 +11,7 @@ EXECUTABLE = $(APP_NAME)
 PKG = github.com/Clever/$(APP_NAME)/v4
 PKGS := $(shell go list ./... | grep -v /vendor | grep -v /gen-go)
 
-$(eval $(call golang-version-check,1.13))
+$(eval $(call golang-version-check,1.16))
 
 all: test build
 
