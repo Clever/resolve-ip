@@ -1,6 +1,6 @@
 module github.com/Clever/resolve-ip/v4
 
-go 1.13
+go 1.16
 
 require (
 	github.com/Clever/discovery-go v1.7.1
