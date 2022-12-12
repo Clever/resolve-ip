@@ -2,14 +2,8 @@ const async = require("async");
 const discovery = require("clever-discovery");
 const kayvee = require("kayvee");
 const request = require("request");
-const opentracing = require("opentracing");
 const {commandFactory} = require("hystrixjs");
 const RollingNumberEvent = require("hystrixjs/lib/metrics/RollingNumberEvent");
-
-/**
- * @external Span
- * @see {@link https://doc.esdoc.org/github.com/opentracing/opentracing-javascript/class/src/span.js~Span.html}
- */
 
 const { Errors } = require("./types");
 
@@ -195,11 +189,6 @@ class ResolveIP {
     } else {
       this.logger = new kayvee.logger((options.serviceName || "resolve-ip") + "-wagclient");
     }
-    if (options.tracer) {
-      this.tracer = options.tracer;
-    } else {
-      this.tracer = opentracing.globalTracer();
-    }
 
     const circuitOptions = Object.assign({}, defaultCircuitOptions, options.circuit);
     this._hystrixCommand = commandFactory.getOrCreate(options.serviceName || "resolve-ip").
@@ -216,7 +205,14 @@ class ResolveIP {
       context(this).
       build();
 
-    setInterval(() => this._logCircuitState(), circuitOptions.logIntervalMs);
+    this._logCircuitStateInterval = setInterval(() => this._logCircuitState(), circuitOptions.logIntervalMs);
+  }
+
+  /**
+  * Releases handles used in client
+  */
+  close() {
+    clearInterval(this._logCircuitStateInterval);
   }
 
   _hystrixCommandErrorHandler(err) {
@@ -254,7 +250,6 @@ class ResolveIP {
    * Checks if the service is healthy
    * @param {object} [options]
    * @param {number} [options.timeout] - A request specific timeout
-   * @param {external:Span} [options.span] - An OpenTracing span - For example from the parent request
    * @param {module:resolve-ip.RetryPolicies} [options.retryPolicy] - A request specific retryPolicy
    * @param {function} [cb]
    * @returns {Promise}
@@ -284,21 +279,12 @@ class ResolveIP {
       }
 
       const timeout = options.timeout || this.timeout;
-      const tracer = options.tracer || this.tracer;
-      const span = options.span;
 
       const headers = {};
       headers["Canonical-Resource"] = "healthCheck";
       headers[versionHeader] = version;
 
       const query = {};
-
-      if (span && typeof span.log === "function") {
-        // Need to get tracer to inject. Use HTTP headers format so we can properly escape special characters
-        tracer.inject(span, opentracing.FORMAT_HTTP_HEADERS, headers);
-        span.log({event: "GET /healthcheck"});
-        span.setTag("span.kind", "client");
-      }
 
       const requestOptions = {
         method: "GET",
@@ -368,7 +354,6 @@ class ResolveIP {
    * @param {string} ip - The IP to try to locate
    * @param {object} [options]
    * @param {number} [options.timeout] - A request specific timeout
-   * @param {external:Span} [options.span] - An OpenTracing span - For example from the parent request
    * @param {module:resolve-ip.RetryPolicies} [options.retryPolicy] - A request specific retryPolicy
    * @param {function} [cb]
    * @returns {Promise}
@@ -400,8 +385,6 @@ class ResolveIP {
       }
 
       const timeout = options.timeout || this.timeout;
-      const tracer = options.tracer || this.tracer;
-      const span = options.span;
 
       const headers = {};
       headers["Canonical-Resource"] = "locationForIP";
@@ -412,13 +395,6 @@ class ResolveIP {
       }
 
       const query = {};
-
-      if (span && typeof span.log === "function") {
-        // Need to get tracer to inject. Use HTTP headers format so we can properly escape special characters
-        tracer.inject(span, opentracing.FORMAT_HTTP_HEADERS, headers);
-        span.log({event: "GET /ip/{ip}"});
-        span.setTag("span.kind", "client");
-      }
 
       const requestOptions = {
         method: "GET",
@@ -510,7 +486,7 @@ module.exports.Errors = Errors;
 
 module.exports.DefaultCircuitOptions = defaultCircuitOptions;
 
-const version = "4.0.0";
+const version = "4.1.0";
 const versionHeader = "X-Client-Version";
 module.exports.Version = version;
 module.exports.VersionHeader = versionHeader;

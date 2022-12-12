@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -14,12 +13,10 @@ import (
 	"sync"
 	"time"
 
+	wcl "github.com/Clever/wag/logging/wagclientlogger"
+
 	"github.com/afex/hystrix-go/hystrix"
 	"github.com/donovanhide/eventsource"
-	opentracing "github.com/opentracing/opentracing-go"
-	tags "github.com/opentracing/opentracing-go/ext"
-	"golang.org/x/net/context/ctxhttp"
-	logger "gopkg.in/Clever/kayvee-go.v6/logger"
 )
 
 // doer is an interface for "doing" http requests possibly with wrapping
@@ -33,33 +30,7 @@ type opNameCtx struct{}
 type baseDoer struct{}
 
 func (d baseDoer) Do(c *http.Client, r *http.Request) (*http.Response, error) {
-	return ctxhttp.Do(r.Context(), c, r)
-}
-
-// tracingDoer adds tracing to http requests
-type tracingDoer struct {
-	d doer
-}
-
-func (d tracingDoer) Do(c *http.Client, r *http.Request) (*http.Response, error) {
-
-	ctx := r.Context()
-	opName := ctx.Value(opNameCtx{}).(string)
-	var sp opentracing.Span
-	// TODO: add tags relating to input data?
-	if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {
-		sp = opentracing.StartSpan(opName, opentracing.ChildOf(parentSpan.Context()))
-	} else {
-		sp = opentracing.StartSpan(opName)
-	}
-	tags.SpanKind.Set(sp, tags.SpanKindRPCClientEnum)
-	if err := sp.Tracer().Inject(sp.Context(),
-		opentracing.HTTPHeaders,
-		opentracing.HTTPHeadersCarrier(r.Header)); err != nil {
-		return nil, fmt.Errorf("couldn't inject tracing headers (%v)", err)
-	}
-	defer sp.Finish()
-	return d.d.Do(c, r)
+	return c.Do(r)
 }
 
 // retryHandler retries 50X http requests
@@ -173,8 +144,10 @@ func (d *retryDoer) Do(c *http.Client, r *http.Request) (*http.Response, error) 
 		if retries == len(backoffs) || !retryPolicy.Retry(r, resp, err) {
 			break
 		}
-		// Close the response body and try again
-		resp.Body.Close()
+		// Close the response body if response is not nil
+		if resp != nil {
+			resp.Body.Close()
+		}
 		time.Sleep(backoffs[retries])
 	}
 	return resp, err
@@ -187,7 +160,7 @@ type circuitBreakerDoer struct {
 	d           doer
 	debug       bool
 	circuitName string
-	logger      logger.KayveeLogger
+	logger      wcl.WagClientLogger
 }
 
 var circuitSSEOnce sync.Once
@@ -212,8 +185,8 @@ type HystrixSSEEvent struct {
 	LatencyTotalMean                int    `json:"latencyTotal_mean"`
 }
 
-func logEvent(l logger.KayveeLogger, e HystrixSSEEvent) {
-	l.InfoD(e.Name, map[string]interface{}{
+func logEvent(l wcl.WagClientLogger, e HystrixSSEEvent) {
+	l.Log(wcl.Info, "", map[string]interface{}{
 		"requestCount":                    e.RequestCount,
 		"errorCount":                      e.ErrorCount,
 		"errorPercentage":                 e.ErrorPercentage,
@@ -228,7 +201,6 @@ func logEvent(l logger.KayveeLogger, e HystrixSSEEvent) {
 		"currentConcurrentExecutionCount": e.CurrentConcurrentExecutionCount,
 		"latencyTotalMean":                e.LatencyTotalMean,
 	})
-
 }
 
 func (d *circuitBreakerDoer) init() {

@@ -9,15 +9,13 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/Clever/resolve-ip/v4/gen-go/models"
+	"github.com/Clever/kayvee-go/v7/logger"
+	"github.com/Clever/resolve-ip/gen-go/models/v4"
 	"github.com/go-errors/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
 	"github.com/gorilla/mux"
-	"github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/log"
 	"golang.org/x/xerrors"
-	"gopkg.in/Clever/kayvee-go.v6/logger"
 )
 
 var _ = strconv.ParseInt
@@ -27,7 +25,6 @@ var _ = errors.New
 var _ = mux.Vars
 var _ = bytes.Compare
 var _ = ioutil.ReadAll
-var _ = log.String
 
 var formats = strfmt.Default
 var _ = formats
@@ -123,9 +120,6 @@ func (h handler) HealthCheckHandler(ctx context.Context, w http.ResponseWriter, 
 func newHealthCheckInput(r *http.Request) (*models.HealthCheckInput, error) {
 	var input models.HealthCheckInput
 
-	sp := opentracing.SpanFromContext(r.Context())
-	_ = sp
-
 	var err error
 	_ = err
 
@@ -169,8 +163,6 @@ func statusCodeForLocationForIP(obj interface{}) int {
 
 func (h handler) LocationForIPHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 
-	sp := opentracing.SpanFromContext(ctx)
-
 	ip, err := newLocationForIPInput(r)
 	if err != nil {
 		logger.FromContext(ctx).AddContext("error", err.Error())
@@ -204,9 +196,6 @@ func (h handler) LocationForIPHandler(ctx context.Context, w http.ResponseWriter
 		return
 	}
 
-	jsonSpan, _ := opentracing.StartSpanFromContext(ctx, "json-response-marshaling")
-	defer jsonSpan.Finish()
-
 	respBytes, err := json.Marshal(resp)
 	if err != nil {
 		logger.FromContext(ctx).AddContext("error", err.Error())
@@ -214,7 +203,6 @@ func (h handler) LocationForIPHandler(ctx context.Context, w http.ResponseWriter
 		return
 	}
 
-	sp.LogFields(log.Int("response-size-bytes", len(respBytes)))
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCodeForLocationForIP(resp))
 	w.Write(respBytes)
