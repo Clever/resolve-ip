@@ -6,14 +6,14 @@ package models
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
-	strfmt "github.com/go-openapi/strfmt"
-
 	"github.com/go-openapi/errors"
+	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
 	"github.com/go-openapi/validate"
 )
 
 // IP IP
+//
 // swagger:model IP
 type IP struct {
 
@@ -31,12 +31,10 @@ func (m *IP) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateLat(formats); err != nil {
-		// prop
 		res = append(res, err)
 	}
 
 	if err := m.validateLon(formats); err != nil {
-		// prop
 		res = append(res, err)
 	}
 

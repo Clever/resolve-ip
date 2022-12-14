@@ -3,10 +3,10 @@ package client
 import (
 	"context"
 
-	"github.com/Clever/resolve-ip/v4/gen-go/models"
+	"github.com/Clever/resolve-ip/gen-go/models/v4"
 )
 
-//go:generate mockgen -source=$GOFILE -destination=mock_client.go -package=client
+//go:generate mockgen -source=$GOFILE -destination=mock_client.go -package client --build_flags=--mod=mod -imports=models=github.com/Clever/resolve-ip/gen-go/models/v4
 
 // Client defines the methods available to clients of the resolve-ip service.
 type Client interface {

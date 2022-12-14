@@ -3,10 +3,10 @@ package server
 import (
 	"context"
 
-	"github.com/Clever/resolve-ip/v4/gen-go/models"
+	"github.com/Clever/resolve-ip/gen-go/models/v4"
 )
 
-//go:generate mockgen -source=$GOFILE -destination=mock_controller.go -package=server
+//go:generate mockgen -source=$GOFILE -destination=mock_controller.go -package server --build_flags=--mod=mod -imports=models=github.com/Clever/resolve-ip/gen-go/models/v4
 
 // Controller defines the interface for the resolve-ip service.
 type Controller interface {

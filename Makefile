@@ -2,7 +2,7 @@ include golang.mk
 include wag.mk
 
 # Temporarily pin to wag 6.4.5 until after migrated to go mod and Go 1.16
-WAG_VERSION := v6.4.5
+WAG_VERSION := latest
 
 .PHONY: all test build run
 SHELL := /bin/bash

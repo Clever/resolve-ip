@@ -5,7 +5,7 @@ import (
 	"flag"
 	"log"
 
-	"github.com/Clever/resolve-ip/v4/gen-go/models"
+	"github.com/Clever/resolve-ip/gen-go/models/v4"
 	"github.com/Clever/resolve-ip/v4/gen-go/server"
 	"gopkg.in/Clever/kayvee-go.v5/logger"
 )

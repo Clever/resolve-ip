@@ -8,6 +8,7 @@ resolve-ip client library.
     * [ResolveIP](#exp_module_resolve-ip--ResolveIP) ⏏
         * [new ResolveIP(options)](#new_module_resolve-ip--ResolveIP_new)
         * _instance_
+            * [.close()](#module_resolve-ip--ResolveIP+close)
             * [.healthCheck([options], [cb])](#module_resolve-ip--ResolveIP+healthCheck) ⇒ <code>Promise</code>
             * [.locationForIP(ip, [options], [cb])](#module_resolve-ip--ResolveIP+locationForIP) ⇒ <code>Promise</code>
         * _static_
@@ -49,6 +50,12 @@ Create a new client object.
 | [options.circuit.sleepWindow] | <code>number</code> |  | how long, in milliseconds, to wait after a circuit opens before testing for recovery. Default: 5000. |
 | [options.circuit.errorPercentThreshold] | <code>number</code> |  | the threshold to place on the rolling error rate. Once the error rate exceeds this percentage, the circuit opens. Default: 90. |
 
+<a name="module_resolve-ip--ResolveIP+close"></a>
+
+#### resolveIP.close()
+Releases handles used in client
+
+**Kind**: instance method of [<code>ResolveIP</code>](#exp_module_resolve-ip--ResolveIP)  
 <a name="module_resolve-ip--ResolveIP+healthCheck"></a>
 
 #### resolveIP.healthCheck([options], [cb]) ⇒ <code>Promise</code>
@@ -64,7 +71,6 @@ Checks if the service is healthy
 | --- | --- | --- |
 | [options] | <code>object</code> |  |
 | [options.timeout] | <code>number</code> | A request specific timeout |
-| [options.span] | [<code>Span</code>](https://doc.esdoc.org/github.com/opentracing/opentracing-javascript/class/src/span.js~Span.html) | An OpenTracing span - For example from the parent request |
 | [options.retryPolicy] | [<code>RetryPolicies</code>](#module_resolve-ip--ResolveIP.RetryPolicies) | A request specific retryPolicy |
 | [cb] | <code>function</code> |  |
 
@@ -85,7 +91,6 @@ Gets the lat/lon for a given IP.
 | ip | <code>string</code> | The IP to try to locate |
 | [options] | <code>object</code> |  |
 | [options.timeout] | <code>number</code> | A request specific timeout |
-| [options.span] | [<code>Span</code>](https://doc.esdoc.org/github.com/opentracing/opentracing-javascript/class/src/span.js~Span.html) | An OpenTracing span - For example from the parent request |
 | [options.retryPolicy] | [<code>RetryPolicies</code>](#module_resolve-ip--ResolveIP.RetryPolicies) | A request specific retryPolicy |
 | [cb] | <code>function</code> |  |
 
