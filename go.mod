@@ -4,7 +4,7 @@ go 1.16
 
 require (
 	github.com/Clever/go-process-metrics v0.4.0
-	github.com/Clever/kayvee-go/v7 v7.6.0
+	github.com/Clever/kayvee-go/v7 v7.7.0
 	github.com/Clever/resolve-ip/gen-go/models/v4 v4.0.0-00010101000000-000000000000
 	github.com/go-errors/errors v0.0.0-20150906023321-a41850380601
 	github.com/go-openapi/strfmt v0.21.2

@@ -59,8 +59,8 @@ github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym
 github.com/Clever/go-process-metrics v0.4.0 h1:f7sqN8NxRlLV0phlTRPe1/wDmVOqW/EnILM6J+MkcLE=
 github.com/Clever/go-process-metrics v0.4.0/go.mod h1:nT1q7aJkDqYYwRFfqmuM3akED4ambORB+WhunT9jTEk=
 github.com/Clever/kayvee-go/v7 v7.4.0/go.mod h1:LvO0+U9vKd45yv2j9MtTA1r5LTTf+epSXsxMfw1WNd8=
-github.com/Clever/kayvee-go/v7 v7.6.0 h1:0oKF/yLSZZG0cJoYyuXj49zVU41I1eySvfHunlJkw7A=
-github.com/Clever/kayvee-go/v7 v7.6.0/go.mod h1:B2IcQE7OK8rpYvDotSAvCtfZqZ1UqTs1YacM+YFtxR8=
+github.com/Clever/kayvee-go/v7 v7.7.0 h1:quAQ5s1mcLqXjU3AgLg1A2lOIH102G8zEkasvJdBVlY=
+github.com/Clever/kayvee-go/v7 v7.7.0/go.mod h1:B2IcQE7OK8rpYvDotSAvCtfZqZ1UqTs1YacM+YFtxR8=
 github.com/Clever/wag/logging/wagclientlogger v0.0.0-20220916194010-36f974d66e08 h1:hr8vR3NyIrxMKFOUzqMY5y1VboQaT2Lia4RXVvogLfM=
 github.com/Clever/wag/logging/wagclientlogger v0.0.0-20220916194010-36f974d66e08/go.mod h1:NPerIFemV/7da/vNGALWkky+mit4ulSa24NSalIXgpo=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
