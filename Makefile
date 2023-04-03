@@ -27,6 +27,7 @@ run: build
 
 generate: wag-generate-deps
 	$(call wag-generate-mod,./swagger.yml)
+	go mod vendor
 
 
 

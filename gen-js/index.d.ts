@@ -105,6 +105,11 @@ declare namespace ResolveIP {
   lon: number;
 };
     
+    type UnknownResponse = {
+  body?: string;
+  statusCode?: number;
+};
+    
   }
 }
 
