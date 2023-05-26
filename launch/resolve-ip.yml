@@ -8,7 +8,7 @@ expose:
   health_check:
     type: http
     path: /healthcheck
-team: eng-identity
+team: eng-auth
 databases: []
 alarms:
 - type: InternalErrorAlarm
