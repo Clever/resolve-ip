@@ -3,7 +3,7 @@ jobs:
   build:
     working_directory: ~/go/src/github.com/Clever/resolve-ip
     docker:
-    - image: cimg/go:1.21
+    - image: cimg/go:1.21-node
     environment:
       GOPRIVATE: github.com/Clever/*
       CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
@@ -26,11 +26,6 @@ jobs:
     - run: make build
     - run: tar xvzf GeoLiteCity_20160301.tar.gz
     - run: make test
-    - run:
-        command: |-
-          curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
-          sudo apt-get install -y nodejs
-        name: Install node for npm publish
     - run: $HOME/ci-scripts/circleci/docker-publish $DOCKER_USER $DOCKER_PASS "$DOCKER_EMAIL" $DOCKER_ORG
     - run: $HOME/ci-scripts/circleci/catapult-publish $CATAPULT_URL $CATAPULT_USER $CATAPULT_PASS resolve-ip
     - run: if [ "${CIRCLE_BRANCH}" == "master" ]; then $HOME/ci-scripts/circleci/npm-publish $NPM_TOKEN gen-js/; fi;
