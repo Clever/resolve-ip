@@ -10,6 +10,7 @@ interface RetryPolicy {
 
 interface RequestOptions {
   timeout?: number;
+  baggage?: Map<string, string | number>;
   retryPolicy?: RetryPolicy;
 }
 
@@ -30,11 +31,13 @@ interface CircuitOptions {
 
 interface GenericOptions {
   timeout?: number;
+  baggage?: Map<string, string | number>;
   keepalive?: boolean;
   retryPolicy?: RetryPolicy;
   logger?: Logger;
   circuit?: CircuitOptions;
   serviceName?: string;
+  asynclocalstore?: object;
 }
 
 interface DiscoveryOptions {
