@@ -1,0 +1,32 @@
+{
+  "name": "cache-point",
+  "author": "Lloyd Brookes <75pound@gmail.com>",
+  "version": "0.4.1",
+  "description": "Simple, filesystem-backed memoisation cache.",
+  "repository": "https://github.com/75lb/cache-point.git",
+  "license": "MIT",
+  "main": "lib/cache-point",
+  "keywords": [
+    "memoisation",
+    "memoization",
+    "cache",
+    "file",
+    "store"
+  ],
+  "engines": {
+    "node": ">=4.0.0"
+  },
+  "scripts": {
+    "test": "test-runner test/*.js",
+    "docs": "jsdoc2md -t jsdoc2md/README.hbs lib/*.js > README.md; echo"
+  },
+  "devDependencies": {
+    "jsdoc-to-markdown": "^3.0.0",
+    "test-runner": "~0.4.0"
+  },
+  "dependencies": {
+    "array-back": "^2.0.0",
+    "fs-then-native": "^2.0.0",
+    "mkdirp2": "^1.0.3"
+  }
+}

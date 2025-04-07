@@ -2,7 +2,7 @@
 module github.com/Clever/resolve-ip/gen-go/models/v4
 
 
-go 1.16
+go 1.21
 
 require (
 	github.com/go-openapi/errors v0.20.2

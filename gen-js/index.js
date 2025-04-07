@@ -2,10 +2,28 @@ const async = require("async");
 const discovery = require("clever-discovery");
 const kayvee = require("kayvee");
 const request = require("request");
-const {commandFactory} = require("hystrixjs");
+const {commandFactory, circuitFactory, metricsFactory} = require("hystrixjs");
 const RollingNumberEvent = require("hystrixjs/lib/metrics/RollingNumberEvent");
 
 const { Errors } = require("./types");
+
+function parseForBaggage(entries) {
+  if (!entries) {
+    return "";
+  }
+  // Regular expression for valid characters in keys and values
+  const validChars = /^[a-zA-Z0-9!#$%&'*+`\-.^_`|~]+$/;
+
+  const pairs = [];
+
+  entries.forEach((value, key) => {
+    const validKey = key.match(validChars) ? key : encodeURIComponent(key);
+    const validValue = value.match(validChars) ? value : encodeURIComponent(value);
+    pairs.push(`${validKey}=${validValue}`);
+  });
+
+  return pairs.join(",");
+}
 
 /**
  * The exponential retry policy will retry five times with an exponential backoff.
@@ -80,9 +98,13 @@ function responseLog(logger, req, res, err) {
     "message": err || (res.statusMessage || ""),
     "status_code": res.statusCode || 0,
   };
-
+  
   if (err) {
-    logger.errorD("client-request-finished", logData);
+	if (logData.status_code <= 499){
+		logger.warnD("client-request-finished", logData);
+	}else{
+		logger.errorD("client-request-finished", logData);
+	}
   } else {
     logger.infoD("client-request-finished", logData);
   }
@@ -156,6 +178,7 @@ class ResolveIP {
    * @param {number} [options.circuit.errorPercentThreshold] - the threshold to place on the rolling error
    * rate. Once the error rate exceeds this percentage, the circuit opens.
    * Default: 90.
+   * @param {object} [options.asynclocalstore] a request scoped async store 
    */
   constructor(options) {
     options = options || {};
@@ -189,8 +212,17 @@ class ResolveIP {
     } else {
       this.logger = new kayvee.logger((options.serviceName || "resolve-ip") + "-wagclient");
     }
+    if (options.asynclocalstore) {
+      this.asynclocalstore = options.asynclocalstore;
+    }
+
 
     const circuitOptions = Object.assign({}, defaultCircuitOptions, options.circuit);
+    // hystrix implements a caching mechanism, we don't want this or we can't trust that clients
+    // are initialized with the values passed in. 
+    commandFactory.resetCache();
+    circuitFactory.resetCache();
+    metricsFactory.resetCache();
     this._hystrixCommand = commandFactory.getOrCreate(options.serviceName || "resolve-ip").
       errorHandler(this._hystrixCommandErrorHandler).
       circuitBreakerForceClosed(circuitOptions.forceClosed).
@@ -250,6 +282,7 @@ class ResolveIP {
    * Checks if the service is healthy
    * @param {object} [options]
    * @param {number} [options.timeout] - A request specific timeout
+   * @param {Map<string, string | number>} [options.baggage] - A request-specific baggage to be propagated
    * @param {module:resolve-ip.RetryPolicies} [options.retryPolicy] - A request specific retryPolicy
    * @param {function} [cb]
    * @returns {Promise}
@@ -277,10 +310,20 @@ class ResolveIP {
       if (!options) {
         options = {};
       }
+  
+      const optionsBaggage = options.baggage || new Map();
+
+      const storeContext = this.asynclocalstore?.get("context") || new Map();
+
+      const combinedContext = new Map([...storeContext, ...optionsBaggage]);
 
       const timeout = options.timeout || this.timeout;
 
-      const headers = {};
+      let headers = {};
+      
+      // Convert combinedContext into a string using parseForBaggage
+      headers["baggage"] = parseForBaggage(combinedContext);
+      
       headers["Canonical-Resource"] = "healthCheck";
       headers[versionHeader] = version;
 
@@ -354,6 +397,7 @@ class ResolveIP {
    * @param {string} ip - The IP to try to locate
    * @param {object} [options]
    * @param {number} [options.timeout] - A request specific timeout
+   * @param {Map<string, string | number>} [options.baggage] - A request-specific baggage to be propagated
    * @param {module:resolve-ip.RetryPolicies} [options.retryPolicy] - A request specific retryPolicy
    * @param {function} [cb]
    * @returns {Promise}
@@ -383,10 +427,20 @@ class ResolveIP {
       if (!options) {
         options = {};
       }
+  
+      const optionsBaggage = options.baggage || new Map();
+
+      const storeContext = this.asynclocalstore?.get("context") || new Map();
+
+      const combinedContext = new Map([...storeContext, ...optionsBaggage]);
 
       const timeout = options.timeout || this.timeout;
 
-      const headers = {};
+      let headers = {};
+      
+      // Convert combinedContext into a string using parseForBaggage
+      headers["baggage"] = parseForBaggage(combinedContext);
+      
       headers["Canonical-Resource"] = "locationForIP";
       headers[versionHeader] = version;
       if (!params.ip) {
