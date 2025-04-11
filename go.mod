@@ -1,6 +1,6 @@
 module github.com/Clever/resolve-ip/v4
 
-go 1.21
+go 1.24
 
 require (
 	github.com/Clever/go-process-metrics v0.4.0
@@ -9,6 +9,7 @@ require (
 	github.com/go-errors/errors v0.0.0-20150906023321-a41850380601
 	github.com/go-openapi/strfmt v0.21.2
 	github.com/go-openapi/swag v0.21.1
+	github.com/google/uuid v1.1.2
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/kardianos/osext v0.0.0-20170309185600-9d302b58e975

@@ -10,11 +10,12 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/Clever/kayvee-go/v7/logger"
 
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/baggage"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -29,24 +30,29 @@ import (
 var defaultCollectorHost string = "localhost"
 var defaultCollectorPort uint16 = 4317
 
+// SetupGlobalTraceProviderAndExporter sets up the global trace provider and exporter.
 func SetupGlobalTraceProviderAndExporter(ctx context.Context) (sdktrace.SpanExporter, *sdktrace.TracerProvider, error) {
-
-	addr := fmt.Sprintf("%s:%d", defaultCollectorHost, defaultCollectorPort)
 
 	// Every 15 seconds we'll try to connect to opentelemetry collector at
 	// the default location of localhost:4317
 	// When running in production this is a sidecar, and when running
 	// locally this is a locally running opetelemetry-collector.
-	otlpClient := otlptracegrpc.NewClient(
-		otlptracegrpc.WithReconnectionPeriod(15*time.Second),
-		otlptracegrpc.WithEndpoint(addr),
-		otlptracegrpc.WithInsecure(),
-	)
-	spanExporter, err := otlptrace.New(ctx, otlpClient)
-	// spanExporter, err := jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint("http://localhost:14268/api/traces")))
+	var spanExporter sdktrace.SpanExporter
+	addr := fmt.Sprintf("%s:%d", defaultCollectorHost, defaultCollectorPort)
+	err := error(nil)
+	if (os.Getenv("_TRACING_ENABLED")) == "true" {
 
-	if err != nil {
-		return nil, nil, fmt.Errorf("error creating exporter: %v", err)
+		otlpClient := otlptracegrpc.NewClient(
+			otlptracegrpc.WithReconnectionPeriod(15*time.Second),
+			otlptracegrpc.WithEndpoint(addr),
+			otlptracegrpc.WithInsecure(),
+		)
+		spanExporter, err = otlptrace.New(ctx, otlpClient)
+		if err != nil {
+			return nil, nil, fmt.Errorf("error creating exporter: %v", err)
+		}
+	} else {
+		spanExporter = tracetest.NewNoopExporter()
 	}
 
 	tp := newTracerProvider(spanExporter, newResource())
@@ -84,8 +90,6 @@ func newTracerProvider(exporter sdktrace.SpanExporter, resource *resource.Resour
 			LinkCountLimit:      100,
 		}),
 
-		// Batcher is more efficient, switch to it after testing
-		// sdktrace.WithSyncer(exporter),
 		sdktrace.WithBatcher(exporter),
 		sdktrace.WithResource(resource),
 	)
@@ -113,75 +117,60 @@ func MuxServerMiddleware(serviceName string) func(http.Handler) http.Handler {
 	// fmt.Println("Adding mux server middleware")
 	return func(h http.Handler) http.Handler {
 		return otlmux(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-			var rid string
-			var crid string
-
-			s := trace.SpanFromContext(r.Context())
-			bag := baggage.FromContext(r.Context())
-
-			// Prefer to grab values from baggage
-			crid = bag.Member("clever-request-id").Value()
-			rid = bag.Member("X-Request-ID").Value()
-
-			// If the values aren't set in baggage grab the traceid from otel, and the x-request-id
-			// from the headers (set by envoy)
-			if crid == "" {
-				crid = s.SpanContext().TraceID().String()
+			if r.RequestURI == "/_health" {
+				h.ServeHTTP(rw, r)
+				return
 			}
+			ctx := r.Context()
 
-			if rid == "" {
-				rid = r.Header.Get("X-Request-ID")
-			}
+			s := trace.SpanFromContext(ctx)
+			bags := baggage.FromContext(ctx)
 
-			s.SetAttributes(attribute.String("clever-request-id", crid))
-
-			cridMember, err := baggage.NewMember("clever-request-id", crid)
-			if err != nil {
-				s.RecordError(err)
-			}
-
-			bag, err = bag.SetMember(cridMember)
-			if err != nil {
-				s.RecordError(err)
-			}
-
-			logger.FromContext(r.Context()).AddContext("clever-request-id", crid)
-			rw.Header().Add("clever-request-id", crid)
-
-			if rid != "" {
-				s.SetAttributes(attribute.String("X-Request-ID", rid))
-				ridMember, err := baggage.NewMember("X-Request-ID", rid)
+			if bags.Member("clever-request-id").String() == "=" { // if clever-request-id is not set
+				reqid, err := baggage.NewMember("clever-request-id", uuid.New().String())
 				if err != nil {
-					s.RecordError(err)
-				}
-				bag, err = bag.SetMember(ridMember)
-				if err != nil {
-					s.RecordError(err)
-				}
+					logger.FromContext(ctx).ErrorD("error creating baggage member", logger.M{"error": err.Error()})
+				} else {
+					bags, err = bags.SetMember(reqid)
+					if err != nil {
+						logger.FromContext(ctx).ErrorD("error setting baggage member", logger.M{"error": err.Error()})
+					}
 
-				// Envoy logs store this as request_id so lets match it for easier filtering.
-				logger.FromContext(r.Context()).AddContext("request_id", rid)
-
-				rw.Header().Add("X-Request-ID", rid)
+				}
 			}
 
+			// Add the baggage to the logger
+			for _, bag := range bags.Members() {
+				logger.FromContext(ctx).AddContext(bag.Key(), bag.Value())
+			}
+
+			// Add baggage to the context
+			ctx = baggage.ContextWithBaggage(ctx, bags)
+
+			// Encode the trace/span ids in the DD format
 			if sc := s.SpanContext(); sc.HasTraceID() {
+
+				// Log if sampled
+				if s.SpanContext().IsSampled() {
+					logger.FromContext(ctx).AddContext("sampled", "true")
+				} else {
+					logger.FromContext(ctx).AddContext("sampled", "false")
+				}
+
 				spanID, traceID := sc.SpanID().String(), sc.TraceID().String()
 				// datadog converts hex strings to uint64 IDs, so log those so that correlating logs and traces works
 				if len(traceID) == 32 && len(spanID) == 16 { // opentelemetry format: 16 byte (32-char hex), 8 byte (16-char hex) trace and span ids
 
 					traceIDBs, _ := hex.DecodeString(traceID)
-					logger.FromContext(r.Context()).AddContext("dd.trace_id",
+					logger.FromContext(ctx).AddContext("dd.trace_id",
 						fmt.Sprintf("%d", binary.BigEndian.Uint64(traceIDBs[8:])))
 					spanIDBs, _ := hex.DecodeString(spanID)
-					logger.FromContext(r.Context()).AddContext("dd.span_id",
+					logger.FromContext(ctx).AddContext("dd.span_id",
 						fmt.Sprintf("%d", binary.BigEndian.Uint64(spanIDBs)))
 				}
 			}
 
-			ctx := baggage.ContextWithBaggage(r.Context(), bag)
 			r = r.WithContext(ctx)
-
 			h.ServeHTTP(rw, r)
 		}))
 	}
